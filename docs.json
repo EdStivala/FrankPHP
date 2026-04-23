@@ -1,0 +1,50 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "revisio360",
+  "favicon": "https://revisio360.com/assets/img/revisio_logo.svg",
+  "logo": {
+    "light": "https://app.revisio360.com/assets/images/rv_logo.svg",
+    "dark": "https://app.revisio360.com/assets/images/rv_logo.svg",
+    "href": "https://revisio360.com"
+  },
+  "integrations": {
+   "gtm": {
+     "tagId": "GTM-5R724CF9"
+    }
+  },
+  "colors": {
+    "primary": "#6366f1", 
+    "light": "#818cf8",
+    "dark": "#4f46e5"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Start Here/Glossary",
+        "icon": "house",
+        "groups": [ 
+          {
+            "group" : " ",
+              "pages": [
+                "getting-started/meet-revisio360"
+              ]
+          },
+          {
+            "group" : "GETTING STARTED",
+            "pages": [
+              "getting-started/quickstart"
+            ]
+          },
+          {
+            "group" : "GLOSSARY",
+            "pages": [
+              "features/feature-1",
+              "features/feature-2"
+            ]
+          }     
+        ]
+      }
+  ]
+}
+}
