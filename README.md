@@ -41,7 +41,7 @@ FrankPHP is the battle-tested workhorse behind three distinct business models:
 ## 📥 Get the AI Starter Kit
 The core framework will remain **FREE** I am building out the plugin & template ecosystem, as well as training and support options that will be available commercially. The core framework deliveres value in it's own right and will give you robust SaaS scaffold to build from, for **FREE** 
 
-[👉 Download FrankPHP + the AI Context Blueprint](YOUR_LS_LINK_HERE)
+[👉 Download FrankPHP + the AI Context Blueprint](https://edstivala.gumroad.com/l/FrankCore)
 
 *Includes the Full Source, SQL Schema, and the `CODEBASE.md` Context File.*
 
