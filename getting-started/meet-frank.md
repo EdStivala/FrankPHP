@@ -1,12 +1,12 @@
 ---
 title: "Meet FrankPHP"
-description: "...Built by a founder, for founders. Stop fighting the "Modern Dev" debt and start shipping products."
+description: "...Built by a founder, for founders. Stop fighting modern tech debt and start shipping products."
 sidebarTitle: "Meet FrankPHP"
 icon: "hand"
 iconType: "duotone"
 ---
 
-# 🚀 FrankPHP: The AI-Ready SaaS Framework
+## FrankPHP: The AI-Ready SaaS Framework
 
 ### What is FrankPHP?
 It’s an AI ready PHP Framework to let you build SaaS products quickly.
@@ -23,7 +23,7 @@ Now, I’m productising the engine that powers them. And making it available to 
 
 ---
 
-## 🤖 The AI Advantage: Built-in Context
+## The AI Advantage: Built-in Context
 Small teams and solo founders can't waste days on documentation. FrankPHP is built specifically to be "read" by LLMs.
 
 The framework includes an architectural map (`CODEBASE.md`) designed to be pasted directly into Claude or ChatGPT. 
@@ -32,7 +32,7 @@ The framework includes an architectural map (`CODEBASE.md`) designed to be paste
 
 ---
 
-## 🏗 Why Bootstrap on FrankPHP?
+## Why Bootstrap on FrankPHP?
 
 - **Full Code Ownership:** No low-code lock-in. No 200MB `vendor/` folder. Just clean, hand-rolled PHP 8.x.
 - **£5/mo Infrastructure:** Designed to run on standard shared hosting. If you can FTP a file, you can deploy. No Docker, no build pipelines, no complexity.
@@ -41,7 +41,7 @@ The framework includes an architectural map (`CODEBASE.md`) designed to be paste
 
 ---
 
-## 🔍 Proven in Production
+## Proven in Production
 FrankPHP is the battle-tested workhorse behind three distinct business models:
 *   **Revisio:** Complex business forecasting and workflows.
 *   **BitFitter:** Data-driven fitness and health tracking.
@@ -49,16 +49,16 @@ FrankPHP is the battle-tested workhorse behind three distinct business models:
 
 ---
 
-## 📥 Get the AI Starter Kit
+## Get the AI Starter Kit
 The core framework will remain **FREE** I am building out a plugin, template ecosystem, as well as training and support options that will be available commercially. The core framework delivers value in it's own right and will give you a robust SaaS scaffold to build from, for **FREE** 
 
-[👉 Download FrankPHP + the AI Context Blueprint](https://edstivala.gumroad.com/l/FrankCore)
+[Download FrankPHP + the AI Context Blueprint](https://edstivala.gumroad.com/l/FrankCore)
 
 *Includes Full Framework Source Code, SQL Schema that is tested on MySQL, and the `CODEBASE.md` Context File.*
 
 ---
 
-## ⚖️ License
+#### ⚖️ License
 **MIT License.** Your business, your code, your IP. Build commercial products with total freedom.
 
 
