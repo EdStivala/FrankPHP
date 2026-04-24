@@ -1,8 +1,8 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "revisio360",
-  "favicon": "https://revisio360.com/assets/img/revisio_logo.svg",
+  "name": "FrankPHP",
+  "favicon": "http://n3wmedia.com/assets/img/frank/frank_icon.svg",
   "logo": {
     "light": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
     "dark": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
