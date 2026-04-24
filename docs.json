@@ -4,13 +4,13 @@
   "name": "revisio360",
   "favicon": "https://revisio360.com/assets/img/revisio_logo.svg",
   "logo": {
-    "light": "https://app.revisio360.com/assets/images/rv_logo.svg",
-    "dark": "https://app.revisio360.com/assets/images/rv_logo.svg",
-    "href": "https://revisio360.com"
+    "light": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
+    "dark": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
+    "href": "http://docs.n3wmedia.com"
   },
   "integrations": {
-   "gtm": {
-     "tagId": "GTM-5R724CF9"
+   "ga4": {
+     "measurementId": "G-EKYS32K25T"
     }
   },
   "colors": {
