@@ -2,10 +2,10 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "FrankPHP",
-  "favicon": "http://n3wmedia.com/assets/img/frank/frank_icon.svg",
+  "favicon": "https://edstivala.co.uk/assets/img/frank/frank_icon.svg",
   "logo": {
-    "light": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
-    "dark": "http://n3wmedia.com/assets/img/frank/frank_logo.svg",
+    "light": "https://edstivala.co.uk/assets/img/frank/frank_logo.svg",
+    "dark": "https://edstivala.co.uk/assets/img/frank/frank_logo.svg",
     "href": "http://docs.n3wmedia.com"
   },
   "integrations": {
