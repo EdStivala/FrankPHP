@@ -33,7 +33,7 @@
           {
             "group" : "GETTING STARTED",
             "pages": [
-              "getting-started/quickstart"
+              "getting-started/get-frankphp-running"
             ]
           },
           {

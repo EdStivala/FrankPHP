@@ -1,0 +1,215 @@
+---
+title: "Get FrankPHP Running"
+description: "Get FrankPHP running and create your first page in under 15 minutes."
+---
+
+# Get FrankPHP Running
+
+By the end of this guide you'll have FrankPHP running on a subdomain, be logged in as a real user, and have built your first protected page. That's enough to know the framework is working and to get a feel for how it thinks.
+
+---
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- A subdomain pointed at your shared hosting account (e.g. `app.mysite.com`)
+- A MySQL database created, with a username and password noted down
+- FTP access to your hosting account
+- The FrankPHP zip file downloaded from Gumroad
+
+Your host needs **PHP 8.0 or higher** and **MySQL**. Nothing else. No Composer, no Node, no build tools.
+
+---
+
+## Step 1: Unzip and configure
+
+Unzip the download. You'll get a single folder containing the full framework.
+
+Open `Config/config.php`. This is the only file you need to edit before uploading.
+
+```php
+return [
+    'db' => [
+        'host'     => 'localhost',      // almost always localhost on shared hosting
+        'name'     => 'your_db_name',   // the database you created
+        'user'     => 'your_db_user',
+        'password' => 'your_db_password',
+    ],
+    'timezone' => 'Europe/London',      // set to your timezone
+    'app_name' => 'My App',
+];
+```
+
+Save the file.
+
+---
+
+## Step 2: Import the database schema
+
+In your hosting control panel, open **phpMyAdmin** (or your preferred MySQL client) and select your database.
+
+Import the file `sql/schema.sql` from the zip. This creates all the tables FrankPHP needs and inserts two seed accounts so you can log in immediately.
+
+<Note>
+Most shared hosts provide phpMyAdmin. Look for it under the "Databases" section of your control panel (cPanel, Plesk, etc.).
+</Note>
+
+---
+
+## Step 3: Upload via FTP
+
+Connect to your hosting account via FTP and navigate to the folder that serves your subdomain (e.g. `app.mysite.com/` maps to a folder like `public_html/app/` — check with your host if you're unsure).
+
+Upload the entire contents of the unzipped folder into that directory. The `index.php` file should sit at the root of your subdomain's folder.
+
+---
+
+## Step 4: Verify it's working
+
+Open your subdomain in a browser: `https://app.mysite.com`
+
+You should see the FrankPHP login screen.
+
+<Check>
+If you see a login form, the framework is installed correctly.
+</Check>
+
+If you see a blank page or a PHP error, the most common causes are:
+- `Config/config.php` has incorrect database credentials
+- The schema hasn't been imported yet
+- File permissions — your host may require folders to be `755` and files `644`
+
+---
+
+## Step 5: Log in with a seed account
+
+The schema creates two accounts inside **Tenant 1** — one with admin rights, one with standard user access.
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin / Owner | `owner@tenant1.com` | `password` |
+| User | `user@tenant1.com` | `password` |
+
+Log in with the **owner** account.
+
+After login you'll be redirected to:
+```
+/tenant/1/dashboard
+```
+
+This is your tenant-scoped dashboard — the starting point for every authenticated session in FrankPHP.
+
+<Warning>
+Change these passwords before you share the URL with anyone. They are seed credentials for development only.
+</Warning>
+
+---
+
+## Step 6: Create your first page
+
+Now let's build something. You're going to add a new protected page — a simple "Hello World" that only a logged-in user can see. This touches every layer of the framework in the simplest possible way.
+
+### 6a. Register the route
+
+Open `bootstrap.php` and find the route definitions. Add one new line inside the existing authenticated routes block:
+
+```php
+$router->add('GET', '/tenant/{tenant_id}/hello', 'HelloController@index', [$tm, $auth]);
+```
+
+This tells the router: when a GET request comes in for this URL, run `HelloController@index`, and run the Tenant and Auth middleware first.
+
+### 6b. Create the controller
+
+Create a new file: `Controllers/HelloController.php`
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\BaseController;
+use App\Core\Request;
+use App\Core\Response;
+
+class HelloController extends BaseController
+{
+    public function index(Request $request, array $params): mixed
+    {
+        $tenant = $request->tenant;
+        $user   = $request->user;
+
+        return $this->view('hello/index', [
+            'title'  => 'Hello, FrankPHP',
+            'tenant' => $tenant,
+            'user'   => $user,
+        ]);
+    }
+}
+```
+
+### 6c. Create the view
+
+Create a new file: `Views/hello/index.php`
+
+```php
+<?php
+$title = $title ?? 'Hello';
+ob_start();
+?>
+
+<div class="card">
+    <div class="card-header-modern">
+        <h5>Hello, FrankPHP</h5>
+    </div>
+    <div class="card-body p-3">
+        <p>You are logged in as <strong><?= htmlspecialchars($user['name']) ?></strong>.</p>
+        <p>Your tenant is <strong><?= htmlspecialchars($tenant['name']) ?></strong>.</p>
+        <p>If you can read this, FrankPHP is working correctly.</p>
+    </div>
+</div>
+
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app-main.php';
+?>
+```
+
+### 6d. Upload and visit
+
+Upload the two new files via FTP (just those two — no need to re-upload the whole framework).
+
+Then visit:
+```
+https://app.mysite.com/tenant/1/hello
+```
+
+You should see your new page, inside the app shell, with your user's name displayed.
+
+<Check>
+If you can see the page, congratulations — you've just built your first FrankPHP feature. The route, middleware, controller, and view are all working together correctly.
+</Check>
+
+---
+
+## What just happened
+
+It's worth pausing to understand what FrankPHP did when you visited that URL:
+
+1. `index.php` loaded `bootstrap.php` and dispatched the request
+2. The router matched `/tenant/1/hello` and identified your controller
+3. **TenantMiddleware** ran first — it read `1` from the URL, loaded the tenant row from the database, and attached it to the request
+4. **AuthMiddleware** ran second — it checked your session, loaded your user, confirmed you belong to tenant 1, and attached you to the request
+5. `HelloController@index` received the request with `$request->tenant` and `$request->user` already populated
+6. The view rendered inside `app-main.php`, the authenticated layout
+
+No magic. Every step is explicit and traceable. That's the FrankPHP way.
+
+---
+
+## Next steps
+
+- **Add a form** — learn how to handle POST requests and save data to the database
+- **Understand middleware** — see the full middleware cheatsheet and when to use each combination
+- **Start your application** — fill in Section 14 of `CODEBASE.md` with your app's name, tables, and routes
