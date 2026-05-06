@@ -33,13 +33,14 @@
           {
             "group" : "GETTING STARTED",
             "pages": [
-              "getting-started/get-frankphp-running"
+              "getting-started/get-frankphp-running-rewritten",
+	      "getting-started/environment-configuration"
             ]
           },
           {
-            "group" : "GLOSSARY",
+            "group" : "FEATURES",
             "pages": [
-              "features/feature-1",
+              "features/version-management",
               "features/feature-2"
             ]
           }     

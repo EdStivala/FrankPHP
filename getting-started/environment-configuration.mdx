@@ -1,0 +1,230 @@
+---
+title: "Environment Configuration"
+description: "Use a standard .env file for local credentials and keep sensitive settings out of committed framework files and release packages."
+---
+
+# Environment Configuration
+
+FrankPHP can now adopt a more standard `.env`-based configuration approach for credentials and environment-specific settings.
+
+This is a worthwhile step for two reasons.
+
+First, it improves security by keeping sensitive values out of general configuration files that are more likely to be copied, reused, or accidentally distributed. Second, it makes FrankPHP feel more familiar to developers coming from other modern PHP frameworks.
+
+That does **not** mean FrankPHP needs to become dependency-heavy or over-engineered. The goal is still the same: explicit, readable configuration with no unnecessary complexity.
+
+---
+
+## Why use a `.env` file?
+
+A `.env` file gives you one place to keep environment-specific values such as:
+
+- database host
+- database name
+- database username
+- database password
+- mail credentials
+- app environment flags
+- timezone overrides
+
+These values often differ between:
+
+- local development
+- staging
+- production
+- customer-specific installations
+
+Keeping them separate from the framework’s general configuration makes it easier to move between environments without editing core configuration files each time.
+
+---
+
+## The security advantage
+
+The biggest practical advantage is simple: **sensitive credentials are less likely to be exposed accidentally.**
+
+Without a dedicated `.env` approach, there is a tendency to place secrets directly in `Config/config.php` or other framework files. That works, but it increases the chance that credentials are:
+
+- copied into a release package
+- committed into source history
+- shared during support/debugging
+- left in files that are reused as templates
+
+Using a `.env` file reduces that risk.
+
+<Warning>
+A `.env` file still needs to be treated carefully. It is a safer place for secrets, but it is not something that should be shipped to customers inside a release Zip unless you explicitly intend it.
+</Warning>
+
+---
+
+## Why this aligns FrankPHP with other PHP frameworks
+
+Most major PHP frameworks now separate environment-specific secrets from framework configuration.
+
+That is not just a convention for convention’s sake. It solves a real operational problem: credentials and runtime settings change by environment, while framework code should remain stable.
+
+Moving FrankPHP toward a standard `.env` pattern makes the framework more familiar to developers coming from the broader PHP ecosystem, while still preserving the FrankPHP philosophy of explicit code and minimal moving parts.
+
+---
+
+## Recommended file setup
+
+A practical setup looks like this:
+
+```text
+/app
+  /.env                 ← local or server-specific secrets
+  /.env.example         ← safe template shipped with the framework
+  /Config
+    config.php          ← reads values from env
+  /public
+    index.php
+```
+
+### `.env`
+
+Contains real credentials and environment-specific values.
+
+Example:
+
+```dotenv
+DB_HOST=localhost
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASS=your_db_password
+APP_TIMEZONE=Europe/London
+APP_NAME=My App
+```
+
+### `.env.example`
+
+Contains the same keys but with placeholder values.
+
+This file **can** be distributed in the customer Zip because it acts as the setup template.
+
+Example:
+
+```dotenv
+DB_HOST=localhost
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASS=your_db_password
+APP_TIMEZONE=Europe/London
+APP_NAME=My App
+```
+
+<Note>
+The real `.env` file should normally stay local to the server or development machine. The `.env.example` file is what you ship.
+</Note>
+
+---
+
+## How FrankPHP should use it
+
+The exact implementation can stay simple.
+
+FrankPHP does not need a third-party environment package to get the core benefit. A small internal loader can:
+
+1. read the `.env` file if it exists
+2. parse `KEY=value` lines
+3. place the values into `$_ENV` or a simple lookup array
+4. let `Config/config.php` read from those values
+
+That keeps the approach aligned with the framework’s design principles.
+
+---
+
+## What changes in practice
+
+Instead of hardcoding credentials in `Config/config.php`, that file becomes a normal configuration layer that reads from environment values.
+
+Conceptually, the responsibility changes like this:
+
+- `.env` holds secrets and environment-specific values
+- `Config/config.php` maps those values into the framework configuration array
+- the framework continues to read configuration in the usual way
+
+This keeps FrankPHP explicit while improving separation of concerns.
+
+---
+
+## Release packaging reminder
+
+If you adopt `.env`, your release process should change slightly.
+
+### Do not include
+
+- `.env`
+
+### Safe to include
+
+- `.env.example`
+
+This is one of the reasons the release build process should be scripted. A build script can exclude `.env` automatically rather than relying on you to remember to delete it before creating the Zip.
+
+---
+
+## How to use this in practice
+
+If your framework has been updated to support `.env`, the normal workflow becomes:
+
+## Step 1: Copy the example file
+
+Create a real `.env` based on the shipped template.
+
+```bash
+cp .env.example .env
+```
+
+## Step 2: Fill in the real credentials
+
+Edit `.env` and add the correct values for the current environment.
+
+## Step 3: Leave `Config/config.php` as framework configuration
+
+Avoid editing it repeatedly just to swap credentials between environments.
+
+## Step 4: Keep `.env` out of release packages
+
+When building a Gumroad release, ship `.env.example` but exclude `.env`.
+
+---
+
+## Suggested update to the installation guide
+
+If `get-frankphp-running.mdx` still instructs users to open `Config/config.php` and place their database credentials directly inside it, that guide should be updated.
+
+The setup flow should instead become:
+
+1. unzip FrankPHP
+2. copy `.env.example` to `.env`
+3. fill in database credentials there
+4. upload the framework
+5. ensure the web root points to `/public`
+
+This improves both security and developer experience.
+
+---
+
+## Recommended wording for the setup guide
+
+A revised setup section would say something like this:
+
+> FrankPHP uses a simple `.env` file for environment-specific settings such as database credentials. Copy `.env.example` to `.env`, then enter your database details there before uploading the framework.
+
+That small change makes the installation process feel more modern while still staying simple.
+
+---
+
+## Final reminder
+
+The move to `.env` is not about adding complexity. It is about keeping sensitive values in the right place and making FrankPHP easier to work with across local, staging, and production environments.
+
+Done properly, it gives you:
+
+- better separation of secrets from framework code
+- safer release packaging
+- cleaner configuration management
+- a setup process that feels familiar to PHP developers
+
+All while keeping the FrankPHP approach intact: explicit, dependency-light, and easy to reason about.
