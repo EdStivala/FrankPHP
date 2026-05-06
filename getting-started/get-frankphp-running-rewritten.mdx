@@ -1,0 +1,297 @@
+---
+title: "Get FrankPHP Running"
+description: "Install FrankPHP on shared hosting, configure it with a standard .env file, and build your first protected page in under 15 minutes."
+---
+
+# Get FrankPHP Running
+
+By the end of this guide you'll have FrankPHP installed on a subdomain, configured with a standard `.env` file, be logged in as a real user, and have built your first protected page. That's enough to know the framework is working and to get a feel for how it thinks.
+
+Your host needs **PHP 8.0 or higher** and **MySQL**. Nothing else. No Composer, no Node, no build tools.
+
+---
+
+## Step 1: Create your MySQL database
+
+Log in to your hosting control panel and create a new, empty MySQL database. Most shared hosts do this through **phpMyAdmin** or a dedicated "MySQL Databases" section (cPanel, Plesk, etc.).
+
+Note down the following — you'll need them in the next step:
+
+- Database name
+- Database username
+- Database password
+- Host (almost always `localhost` on shared hosting)
+
+---
+
+## Step 2: Configure FrankPHP locally with `.env`
+
+Unzip your Gumroad download on your local machine. You'll get a single folder containing the full framework.
+
+FrankPHP now uses a standard `.env` file for environment-specific credentials. This keeps secrets out of your main config structure and makes FrankPHP feel more familiar if you've used other PHP frameworks before.
+
+Create a new file in the root of the project called `.env`.
+
+Add your database credentials and core app settings:
+
+```env
+DB_HOST=localhost
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+APP_TIMEZONE=Europe/London
+APP_NAME="My App"
+```
+
+If your download includes an `.env.example` file, copy that first and rename it to `.env`, then fill in your real values.
+
+<Note>
+The `.env` file is for environment-specific settings only. Keep framework defaults and non-sensitive application settings in the normal config structure. Use `.env` for things like database credentials, mail credentials, and other secrets.
+</Note>
+
+<Warning>
+Do not upload your local `.env` to a public web root. It should live in the application root and remain outside the browser-accessible folder.
+</Warning>
+
+---
+
+## Step 3: Set up your directory structure on the server
+
+Connect to your hosting account via FTP and navigate to your root directory. Create the following three folders:
+
+```
+/www    ← your marketing site (point www.yoursite.com here)
+/docs   ← user documentation, if needed (point docs.yoursite.com here)
+/app    ← FrankPHP lives here — do not point any domain to this folder yet
+```
+
+<Note>
+This structure keeps your projects cleanly separated from the start. The `www` and `docs` folders are optional right now — what matters is creating `app`.
+</Note>
+
+---
+
+## Step 4: Upload FrankPHP into the app directory
+
+Upload the entire contents of your unzipped FrankPHP folder into the `/app` directory you just created.
+
+**Check:** `bootstrap.php` should sit at the root of `/app`, not inside a subfolder.
+
+Your `.env` file should also sit at the root of `/app`.
+
+---
+
+## Step 5: Point your subdomain to the public folder
+
+This is the most important configuration step, and it's worth understanding why.
+
+FrankPHP contains a `/public` subdirectory inside `/app`. This is the **only folder your subdomain should point to**. Your hosting control panel will have a setting for "Document Root" or "Web Root" when you create the subdomain — set it to:
+
+```
+/app/public
+```
+
+So your structure looks like this:
+
+```
+/app
+  /.env               ← your environment credentials live here, outside the web root
+  /public             ← app.yoursite.com points HERE
+    index.php
+    /assets
+  /Config
+    config.php        ← framework/app config, not secrets
+  /Controllers
+  /Views
+  bootstrap.php
+```
+
+<Warning>
+**Why this matters:** By pointing your domain to `/public` only, your `.env` file and core framework files stay outside the web root. That means your credentials cannot be requested directly in the browser. This is a simple, effective security layer and follows the same broad approach used by larger PHP frameworks.
+</Warning>
+
+Once the subdomain is configured, point `app.yoursite.com` to `/app/public`.
+
+---
+
+## Step 6: Initialise the database
+
+Back in phpMyAdmin, select your database and initialise it using the `sql/schema.sql` file from your FrankPHP download. You have two options:
+
+**Option A — Import the file directly:**
+Use the **Import** tab in phpMyAdmin and select `sql/schema.sql`.
+
+**Option B — Copy and paste:**
+Open `sql/schema.sql` in a text editor, copy the entire contents, and paste it into the **SQL** command window in phpMyAdmin. Click **Go**.
+
+Either approach creates all the tables FrankPHP needs and seeds two user accounts so you can log in immediately.
+
+---
+
+## Step 7: Open FrankPHP in your browser
+
+Navigate to `https://app.yoursite.com` in your browser.
+
+You should see the FrankPHP login screen.
+
+<Check>
+If you see a login form, FrankPHP is installed correctly. Everything worked.
+</Check>
+
+If you see a blank page or a PHP error, the most common causes are:
+
+- `.env` has incorrect database credentials
+- The subdomain is pointing to `/app` instead of `/app/public`
+- The schema hasn't been imported yet
+- File permissions — your host may require folders to be `755` and files `644`
+
+---
+
+## Step 8: Log in
+
+The schema seeds two accounts inside **Tenant 1** — one owner-level, one standard user:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin / Owner | `owner@tenant1.com` | `password` |
+| User | `user@tenant1.com` | `password` |
+
+Log in with the **owner** account. After login you'll land on the default dashboard at:
+
+```
+/tenant/1/dashboard
+```
+
+<Warning>
+**"Forgot my password"** is visible on the login screen but will not work yet — FrankPHP needs email credentials configured before it can send password reset links. When mail support is enabled, these credentials should also live in `.env`.
+</Warning>
+
+<Warning>
+Change these passwords before you share the URL with anyone. They are seed credentials for development only.
+</Warning>
+
+---
+
+## Step 9: Build your first page
+
+FrankPHP is running. Now let's prove it properly by building something — a simple protected page that only a logged-in user can see. This touches every layer of the framework in the most straightforward way possible.
+
+### 9a. Register the route
+
+Open `bootstrap.php` and find the route definitions. Add one new line inside the existing authenticated routes block:
+
+```php
+$router->add('GET', '/tenant/{tenant_id}/hello', 'HelloController@index', [$tm, $auth]);
+```
+
+This tells the router: when a GET request comes in for this URL, run `HelloController@index`, and run the Tenant and Auth middleware first.
+
+### 9b. Create the controller
+
+Create a new file: `Controllers/HelloController.php`
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\BaseController;
+use App\Core\Request;
+use App\Core\Response;
+
+class HelloController extends BaseController
+{
+    public function index(Request $request, array $params): mixed
+    {
+        $tenant = $request->tenant;
+        $user   = $request->user;
+
+        return $this->view('hello/index', [
+            'title'  => 'Hello, FrankPHP',
+            'tenant' => $tenant,
+            'user'   => $user,
+        ]);
+    }
+}
+```
+
+### 9c. Create the view
+
+Create a new file: `Views/hello/index.php`
+
+```php
+<?php
+$title = $title ?? 'Hello';
+ob_start();
+?>
+
+<div class="card">
+    <div class="card-header-modern">
+        <h5>Hello, FrankPHP</h5>
+    </div>
+    <div class="card-body p-3">
+        <p>You are logged in as <strong><?= htmlspecialchars($user['name']) ?></strong>.</p>
+        <p>Your tenant is <strong><?= htmlspecialchars($tenant['name']) ?></strong>.</p>
+        <p>If you can read this, FrankPHP is working correctly.</p>
+    </div>
+</div>
+
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app-main.php';
+?>
+```
+
+### 9d. Upload and visit
+
+Upload just the two new files via FTP — no need to re-upload the whole framework.
+
+Then visit:
+
+```
+https://app.yoursite.com/tenant/1/hello
+```
+
+You should see your new page, inside the app shell, with your user's name and tenant displayed.
+
+<Check>
+If you can see the page, you've just built your first FrankPHP feature. The route, middleware, controller, and view are all working together correctly.
+</Check>
+
+---
+
+## What just happened
+
+It's worth pausing to understand what FrankPHP did when you visited that URL:
+
+1. `index.php` loaded `bootstrap.php` and dispatched the request
+2. The router matched `/tenant/1/hello` and identified your controller
+3. **TenantMiddleware** ran first — it read `1` from the URL, loaded the tenant from the database, and attached it to the request
+4. **AuthMiddleware** ran second — it checked your session, loaded your user, confirmed they belong to tenant 1, and attached them to the request
+5. `HelloController@index` received the request with `$request->tenant` and `$request->user` already populated
+6. The view rendered inside `app-main.php`, the authenticated layout
+
+No magic. Every step is explicit and traceable. That's the FrankPHP way.
+
+---
+
+## Why `.env` is worth using
+
+Moving credentials into `.env` gives FrankPHP a cleaner separation between code and secrets.
+
+It also brings three practical benefits:
+
+1. **Better security** — credentials live outside the public web root and outside your main config file
+2. **Cleaner deployments** — each environment can have its own `.env` without editing framework code
+3. **More familiar workflow** — developers coming from Laravel, Symfony, and other PHP frameworks will immediately understand the pattern
+
+This keeps FrankPHP aligned with common modern PHP practices while still staying true to the framework's philosophy: no dependencies, no hidden machinery, and no complex setup pipeline.
+
+---
+
+## Next steps
+
+- **Add a form** — learn how to handle POST requests and save data to the database
+- **Understand middleware** — see the full middleware cheatsheet and when to use each combination
+- **Start your application** — fill in Section 14 of `CODEBASE.md` with your app's name, tables, and routes
+- **Configure version management** — use the new release tooling to track versions, changes, and packaged zip releases
