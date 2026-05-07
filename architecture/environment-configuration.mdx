@@ -7,7 +7,7 @@ description: "Use a standard .env file for local credentials and keep sensitive 
 
 FrankPHP can now adopt a more standard `.env`-based configuration approach for credentials and environment-specific settings.
 
-This is a worthwhile step for two reasons.
+This is architecturally important for two reasons.
 
 First, it improves security by keeping sensitive values out of general configuration files that are more likely to be copied, reused, or accidentally distributed. Second, it makes FrankPHP feel more familiar to developers coming from other modern PHP frameworks.
 
@@ -119,11 +119,11 @@ The real `.env` file should normally stay local to the server or development mac
 
 ---
 
-## How FrankPHP should use it
+## How FrankPHP uses it
 
-The exact implementation can stay simple.
+The exact implementation stays simple.
 
-FrankPHP does not need a third-party environment package to get the core benefit. A small internal loader can:
+FrankPHP does not need a third-party environment package to get the core benefit. A small internal loader is used:
 
 1. read the `.env` file if it exists
 2. parse `KEY=value` lines
@@ -136,7 +136,7 @@ That keeps the approach aligned with the framework’s design principles.
 
 ## What changes in practice
 
-Instead of hardcoding credentials in `Config/config.php`, that file becomes a normal configuration layer that reads from environment values.
+Instead of hardcoding credentials in `Config/config.php` as in the 1.0 release, that file becomes a normal configuration layer that reads from environment values.
 
 Conceptually, the responsibility changes like this:
 
@@ -160,7 +160,7 @@ If you adopt `.env`, your release process should change slightly.
 
 - `.env.example`
 
-This is one of the reasons the release build process should be scripted. A build script can exclude `.env` automatically rather than relying on you to remember to delete it before creating the Zip.
+This is one of the reasons the release build process should be scripted. A build script can exclude `.env` automatically rather than relying on you to remember to delete it before creating the Zip. The [Version Management feature](/features/version-management) enables exactly this sort of scripting to support the release packaging without complexity.
 
 ---
 
@@ -190,33 +190,7 @@ When building a Gumroad release, ship `.env.example` but exclude `.env`.
 
 ---
 
-## Suggested update to the installation guide
-
-If `get-frankphp-running.mdx` still instructs users to open `Config/config.php` and place their database credentials directly inside it, that guide should be updated.
-
-The setup flow should instead become:
-
-1. unzip FrankPHP
-2. copy `.env.example` to `.env`
-3. fill in database credentials there
-4. upload the framework
-5. ensure the web root points to `/public`
-
-This improves both security and developer experience.
-
----
-
-## Recommended wording for the setup guide
-
-A revised setup section would say something like this:
-
-> FrankPHP uses a simple `.env` file for environment-specific settings such as database credentials. Copy `.env.example` to `.env`, then enter your database details there before uploading the framework.
-
-That small change makes the installation process feel more modern while still staying simple.
-
----
-
-## Final reminder
+## Conclusion
 
 The move to `.env` is not about adding complexity. It is about keeping sensitive values in the right place and making FrankPHP easier to work with across local, staging, and production environments.
 
