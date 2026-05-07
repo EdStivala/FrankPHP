@@ -1,0 +1,119 @@
+---
+title: "AI Context Briefing"
+description: "Two structured files that give your AI assistant complete, accurate knowledge of FrankPHP and your application before it writes a single line."
+---
+
+# AI Context Briefing
+
+FrankPHP ships with a documentation architecture designed for AI pair-coding. The goal is simple: when you sit down with Claude, ChatGPT, or any other AI assistant, it should understand your entire application precisely — without reading your source code, without guessing at conventions, and without you having to reassemble context from scratch every session.
+
+This is the AI Context Briefing. It is not a single file — it is two files, kept separate deliberately, working together.
+
+---
+
+## The problem with established frameworks and AI
+
+Most PHP frameworks were designed before AI pair-coding became a practical development workflow. Their documentation is thorough, but it was written for human readers — people who read tutorials, accumulate understanding over time, and can tolerate a degree of ambiguity.
+
+When you use an AI assistant with an established framework, it draws on its training data: official docs, community tutorials, Stack Overflow answers, GitHub repositories. That data is extensive, but it has two structural problems.
+
+**The quality is unweighted.** The AI cannot distinguish between a well-architected pattern from a production codebase and a workaround posted in 2017 by someone learning the framework for the first time. It averages across everything it has seen. The signal-to-noise ratio is unknown.
+
+**It does not know your application.** Even if the AI understood the framework perfectly, it knows nothing specific about your application — your routes, your models, your services, your business rules. To learn those, it has to read your files. That takes time and tokens, and every inference from code is a guess that might be wrong.
+
+The AI Context Briefing addresses both problems directly.
+
+---
+
+## The two files
+
+The briefing is split across two files for the same reason controllers and models are kept separate: each has a single, clear responsibility, and changes to one should not affect the other.
+
+### `CODEBASE.md` — the framework layer
+
+`CODEBASE.md` ships with FrankPHP and is authored at the framework level. It describes the complete behavioural contract of the framework:
+
+- routing syntax and middleware combinations
+- request lifecycle
+- controller, model, and service patterns
+- view and layout conventions
+- database access patterns
+- authentication and tenant resolution
+- CSS conventions and design tokens
+- what the framework deliberately does not include
+
+This file is versioned with the framework. It is read by your AI assistant but never modified by you or your AI — it describes FrankPHP, not your application.
+
+The framework's deliberate simplicity makes this possible. Because FrankPHP has no ORM, no dependency injection container, no event system, and no Composer dependencies, the entire surface area fits in a single file without ambiguity. An AI reading `CODEBASE.md` will never generate Eloquent-style queries or reach for a service container, because the framework contract explicitly excludes them.
+
+<Note>
+`CODEBASE.md` is updated by the framework author with each version release. It is part of your download and should not be edited.
+</Note>
+
+### `MYAPP.md` — the application layer
+
+`MYAPP.md` sits alongside `CODEBASE.md` in your project root. You create and maintain this file. It describes the current state of the specific application you are building on top of FrankPHP:
+
+- your application name and purpose
+- every table in your database, with columns and types
+- every route you have added, with middleware
+- every service, with its public methods and return values
+- business rules the AI needs to know
+- any deliberate deviations from standard framework patterns
+
+This file grows as your application grows. A framework upgrade — a new version of `CODEBASE.md` — does not touch `MYAPP.md`. Adding a feature to your application does not touch `CODEBASE.md`. The contract between them is clean.
+
+---
+
+## How to use the briefing
+
+The workflow is the same whether you are using a chat interface like Claude.ai or an agentic tool like Claude Code.
+
+**In a chat interface:** paste both files at the start of your session. The AI has complete context for the framework and your application in a single prompt. You do not need to select source files, explain your middleware setup, or describe your naming conventions. The briefing does that.
+
+**With Claude Code or agentic tooling:** the AI reads both files before working on your codebase. It does not need to explore your source files to infer conventions — it has an authoritative map. Discovery overhead approaches zero.
+
+In either case, the quality of what the AI produces is directly tied to how accurate and current `MYAPP.md` is. An up-to-date briefing means tight, idiomatic output on the first pass. A stale one means the AI is working from outdated information.
+
+---
+
+## Keeping the briefing current
+
+The most practical way to keep `MYAPP.md` accurate is to treat it as a deliverable alongside every feature you build, not as something you go back and update later.
+
+When you ask your AI to build a new controller, also ask it to update the route inventory in `MYAPP.md`. When it adds a model, ask it to update the data model section. When it adds a service, ask it to document the public methods.
+
+The AI that builds the code is well-placed to write the documentation for it — it already knows what it just created. The cost of keeping the briefing current is low if it happens as part of each session rather than in a separate documentation pass that never quite happens.
+
+`CODEBASE.md` includes a reference section that describes the required structure of `MYAPP.md` and what each section should contain.
+
+<Note>
+Think of MYAPP.md as a living document that you and your AI maintain together. Its accuracy directly determines how useful your AI assistant is in the next session.
+</Note>
+
+---
+
+## Why this compounds over time
+
+Early in a project, `MYAPP.md` is short — your application does not have much in it yet. The advantage at this stage is mainly that your AI has precise framework knowledge from `CODEBASE.md` rather than averaging across training data of variable quality.
+
+As the project grows, the briefing becomes more valuable. By the time you have twenty routes, six models, and a handful of services, any new AI session — or any new developer — can understand the application fully by reading two files. You do not need to explore the codebase. You do not need to explain the patterns you have been following. The briefing is already there.
+
+This also means handing off a project or bringing in a collaborator is cheaper. The two files describe the system accurately and completely at the level any AI assistant needs.
+
+---
+
+## The structure at a glance
+
+| File | Authored by | Changes when | Contains |
+|------|-------------|--------------|----------|
+| `CODEBASE.md` | FrankPHP | Framework version updates | Framework contract, patterns, conventions, deliberate omissions |
+| `MYAPP.md` | You (and your AI) | You add a feature | Your routes, models, services, business rules, deviations |
+
+---
+
+## Next steps
+
+- See the `CODEBASE.md` reference section for the required structure and format of `MYAPP.md`
+- Add your application name and first table to `MYAPP.md` before your first AI session
+- When building a new feature, include updating `MYAPP.md` as part of your prompt to the AI

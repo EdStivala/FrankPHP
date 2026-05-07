@@ -34,14 +34,14 @@
             "group" : "GETTING STARTED",
             "pages": [
               "getting-started/get-frankphp-running-rewritten",
-	      "getting-started/environment-configuration"
+	      	  "getting-started/environment-configuration"
             ]
           },
           {
             "group" : "FEATURES",
             "pages": [
-              "features/version-management",
-              "features/feature-2"
+              "features/ai-context-briefing",
+			  "features/version-management"
             ]
           }     
         ]
