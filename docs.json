@@ -33,8 +33,7 @@
           {
             "group" : "GETTING STARTED",
             "pages": [
-              "getting-started/get-frankphp-running-rewritten",
-	      	  "getting-started/environment-configuration"
+              "getting-started/get-frankphp-running-rewritten"
             ]
           },
           {
@@ -43,7 +42,13 @@
               "features/ai-context-briefing",
 			  "features/version-management"
             ]
-          }     
+          },
+		  {
+			  "group" : "ARCHITECTURE",
+			  "pages": [
+				  "architecture/environment-configuration"
+			  ]
+		  }     
         ]
       }
   ]
