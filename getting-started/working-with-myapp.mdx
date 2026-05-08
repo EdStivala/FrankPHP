@@ -1,0 +1,126 @@
+---
+title: "Working with MYAPP.md"
+description: "MYAPP.md is the living record of your application. Learn how to keep it accurate whether you're working with an AI agent, a chat interface, or updating it yourself."
+---
+
+# Working with MYAPP.md
+
+Every FrankPHP project includes two files that together give any AI agent — or any new developer — complete, accurate context for your application:
+
+- **`CODEBASE.md`** describes the framework. It is versioned with FrankPHP and you do not edit it.
+- **`MYAPP.md`** describes your application. You own it, and it needs to stay current.
+
+This page explains what MYAPP.md contains, why it matters, and exactly how to keep it updated depending on how you're working.
+
+---
+
+## What MYAPP.md contains
+
+MYAPP.md is a structured record of everything your application adds on top of the framework:
+
+- Every database table your application defines
+- Every route your application registers
+- Every controller, model, and service you add, including custom method signatures
+- Business rules that aren't obvious from reading the code
+- Any intentional deviations from standard FrankPHP patterns
+
+It does **not** contain framework information. The `users`, `tenants`, and `password_reset_tokens` tables, the auth routes, and the middleware stack are all documented in `CODEBASE.md` — you do not need to repeat them in MYAPP.md.
+
+<Note>
+Think of MYAPP.md as the one document a new developer — or a new AI session — would need to understand your specific application without reading every source file.
+</Note>
+
+---
+
+## Why keeping it current matters
+
+An AI agent working with an outdated MYAPP.md will make assumptions to fill the gaps. Those assumptions are often plausible-sounding and wrong in ways that are difficult to spot. The more accurate MYAPP.md is, the tighter and more correct the code it produces on the first pass.
+
+The principle behind FrankPHP's [AI-native design](/features/ai-context-briefing) is that documentation cost compounds in your favour over time — but only if the document stays accurate. A MYAPP.md that drifts from the codebase becomes a liability rather than an asset.
+
+---
+
+## How updates work — three modes
+
+How MYAPP.md gets updated depends on how you're working.
+
+### Working with an AI agent (Claude Code or equivalent)
+
+When you're running an agentic tool with file system access, MYAPP.md updates are part of the same task as the code change. The agent will:
+
+1. Write the feature code
+2. Update the relevant sections of MYAPP.md in the same pass
+3. Confirm in its summary which sections changed
+
+You don't need to do anything separately. If the agent produces code without updating MYAPP.md, that's a gap — ask it to complete the documentation before you move on.
+
+### Working with a chat interface (pasting into Claude, ChatGPT, etc.)
+
+At the start of every session, paste both `CODEBASE.md` and `MYAPP.md` into the conversation. The AI has full context from that point forward.
+
+After the AI produces feature code, it will also produce a clearly labelled **MYAPP.md patch** — the exact lines to add, replace, or remove, with enough surrounding context to locate the right position in the file. Apply the patch before your next session.
+
+<Tip>
+Applying the patch before you close the session takes about a minute. Skipping it means your next session starts with incomplete context, and the quality of the output drops accordingly.
+</Tip>
+
+### Making changes yourself (no AI involved)
+
+If you add a route, model, or service manually, update MYAPP.md yourself before your next AI session. The sections are self-describing — each one has a clear structure and a comment explaining what belongs there.
+
+The fields to update are the same regardless of who made the change:
+
+| What you built | Section to update |
+|---------------|------------------|
+| New database table | Data Model |
+| New route | Route Inventory |
+| New controller method | Route Inventory |
+| New model with custom methods | Models |
+| New service | Services |
+| New business rule | Business Rules |
+| Intentional deviation from a pattern | Known Deviations |
+| New CSS file | CSS Conventions |
+
+---
+
+## The Current Development Focus section
+
+MYAPP.md includes a **Current Development Focus** section at the top of the file. This is the first thing an AI agent reads to understand what you're actively working on.
+
+Update it at the start of any significant piece of work:
+
+```markdown
+## Current Development Focus
+
+- **Current feature:** Building the invoice generation flow
+- **Working files:** InvoiceController.php, InvoiceService.php, Views/invoices/
+- **Patterns to follow:** Follow the pattern used in OrderController@store
+- **Known issues / tech debt:** InvoiceService is growing large — plan to extract line item logic
+- **Do not touch:** Payment gateway integration is stable — do not refactor PaymentService
+```
+
+This small section prevents a large class of AI errors — the agent knows what's in progress, what to follow, and what to leave alone.
+
+---
+
+## What MYAPP.md does not replace
+
+MYAPP.md is a context document, not a substitute for readable code. It tells an AI agent what exists and how the pieces connect — it does not need to explain every implementation detail. Keep entries concise and factual.
+
+Business rules are the exception: if a rule is non-obvious from the schema or code (for example, "a session cannot be started if the user already has an incomplete one"), write it out fully. These are exactly the rules an agent is most likely to violate if they're only implicit in the code.
+
+---
+
+## Keeping the Glossary up to date
+
+The Glossary section at the bottom of MYAPP.md is easy to overlook and consistently valuable. Domain terms that are obvious to you — "a Tenant is a gym", "a Session is a workout instance, not an HTTP session" — are ambiguous to an agent reading code cold.
+
+Add a glossary entry whenever you use a term that has a specific meaning in your application that differs from its general meaning.
+
+---
+
+## Next steps
+
+- [AI Context Briefing](/features/ai-context-briefing) — how CODEBASE.md and MYAPP.md work together and why the separation matters
+- [Get FrankPHP Running](/getting-started/get-frankphp-running-rewritten) — if you haven't set up your project yet
+- [Environment Configuration](/architecture/environment-configuration) — managing credentials and config across environments
