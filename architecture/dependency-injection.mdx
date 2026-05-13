@@ -1,0 +1,354 @@
+---
+title: "Dependency Injection"
+description: "How FrankPHP wires services to controllers without magic, and how to extend the container for your own application."
+---
+
+# Dependency Injection
+
+FrankPHP 1.2.0 introduces a dependency injection container.
+
+This is an architectural change worth understanding, because it touches how services are built, how controllers receive them, and how you extend both as your application grows. It is also worth understanding why the approach is what it is — explicit and readable — rather than following the fully-automated style that larger frameworks use.
+
+---
+
+## Why this was added
+
+Before 1.2.0, services were constructed inside the methods that used them.
+
+```php
+// The old way — inside a controller method
+public function sendPasswordReset(Request $request, array $params): mixed
+{
+    $resetService = new PasswordResetService();
+    $result       = $resetService->requestPasswordReset($email);
+}
+```
+
+This works when services have no dependencies of their own. It stops working the moment a service needs something handed to it — like SMTP credentials, a database connection, or another service.
+
+When `EmailService` was updated in 1.1.0 to read credentials from `.env` via `config.php`, its constructor changed from requiring nothing to requiring seven parameters. Every place in the codebase that wrote `new EmailService()` broke immediately. There were three of them.
+
+That is the core problem. When you construct services at the call site, every constructor change ripples outward through every caller. The more services a service depends on, the worse this gets.
+
+A dependency injection container solves this cleanly: services are constructed once, in one place, with all their dependencies explicitly provided. The rest of the application just asks for what it needs.
+
+---
+
+## What the container actually is
+
+The FrankPHP container is a single file: `Core/Container.php`.
+
+It is around sixty lines of plain PHP. It has four methods. There is no reflection, no attribute scanning, no class map generation, no compiled cache. You can read the entire file in two minutes and understand exactly how it works.
+
+```php
+$container->singleton(ServiceName::class, function ($c) {
+    return new ServiceName(/* dependencies */);
+});
+
+$container->make(ServiceName::class); // returns the built instance
+```
+
+That is the entire API for the common case.
+
+---
+
+## How it is different from Laravel or Symfony
+
+In Laravel and Symfony, the container inspects your constructor type hints using PHP reflection and automatically resolves and injects dependencies. You declare what you need, and the framework figures out how to build it.
+
+That approach is convenient. It is also opaque. When something goes wrong, you have to understand a resolution chain that runs behind the scenes. When an AI agent is helping you build features, it has to infer the binding behaviour rather than read it.
+
+FrankPHP takes a different position. Every binding is a plain PHP closure written explicitly in `bootstrap.php`. Nothing is inferred. Nothing is implicit. If you want to know what `PasswordResetService` is built with, you look at `bootstrap.php` and you can see it:
+
+```php
+$container->singleton(\App\Services\PasswordResetService::class, function ($c) {
+    return new \App\Services\PasswordResetService(
+        userModel:    new \App\Models\User(),
+        emailService: $c->make(\App\Services\Email\EmailService::class),
+    );
+});
+```
+
+This is not a shortcut. This is the same explicit code you would have written inside the controller method anyway — just moved to the one place where it belongs.
+
+The result is a framework that now has a proper service wiring layer, aligned with how every major PHP framework handles this problem, while remaining completely transparent about what it is doing.
+
+---
+
+## How the container fits into the request lifecycle
+
+The container is created in `bootstrap.php` after config is loaded. It is handed to the Router. When a request comes in, the Router checks whether the matched controller has a binding in the container. If it does, the container builds it. If it does not, the Router falls back to `new ControllerName()` as before.
+
+```
+bootstrap.php
+  └── Env::load()
+  └── config.php
+  └── Database::connect()
+  └── new Container()
+        └── singleton: EmailService     ← built once from config, shared
+        └── singleton: PasswordResetService  ← gets the EmailService
+        └── singleton: SignupService         ← gets the EmailService
+        └── bind: AuthController    ← gets the PasswordResetService
+        └── bind: SignupController  ← gets the SignupService
+  └── new Router($container)
+        └── request arrives
+        └── Router checks: container->has(ControllerName)?
+              YES → container->make(ControllerName)
+              NO  → new ControllerName()
+```
+
+Controllers that have no constructor dependencies — which is most of them — work exactly as before. You only touch the container when a controller genuinely needs something injected.
+
+---
+
+## The framework services
+
+Three services are registered in the container by the framework and should not need to be modified as part of application feature work.
+
+**`EmailService`** is registered as a singleton. It is built once from `$config['mail']` and is the only place in the application that knows about SMTP credentials. Every service that needs to send email receives this single instance.
+
+**`PasswordResetService`** is registered as a singleton. It depends on `EmailService` and the `User` model.
+
+**`SignupService`** is registered as a singleton. It depends on `EmailService` and a database connection.
+
+<Note>
+EmailService, PasswordResetService, and SignupService are framework-owned. They are documented in CODEBASE.md Section 15.4. Do not modify these bindings as part of application feature work — if you need to change framework behaviour, that is a deliberate upgrade decision.
+</Note>
+
+---
+
+## Extending the container for your own application
+
+When you build a new feature that involves a service with dependencies, you register it in `bootstrap.php`. That is the only file that changes.
+
+### When you need to extend the container
+
+You need to add a container binding when a service you are building depends on:
+
+- `EmailService` — because it needs the SMTP credentials
+- The database PDO instance — when you want to be explicit about it rather than relying on `Database::getPdo()` inside the service
+- Another service you have already registered
+- Configuration values from `$config`
+
+You do **not** need a container binding for services that construct themselves fine with `new ServiceName()`. If your service takes no dependencies, there is nothing to inject.
+
+You do **not** need a container binding for models. Models resolve their own database connection in their constructor via `BaseModel`. Use `new Model()` inside your service constructor.
+
+### Step 1: Register your service
+
+Add a `singleton()` call to the container block in `bootstrap.php`. Place it after the existing framework service registrations.
+
+```php
+// In bootstrap.php — after the framework singletons
+
+$container->singleton(\App\Services\InvoiceService::class, function ($c) use ($config) {
+    return new \App\Services\InvoiceService(
+        emailService: $c->make(\App\Services\Email\EmailService::class),
+        pdo:          \App\Core\Database::getPdo(),
+        currency:     $config['app']['currency'] ?? 'GBP'
+    );
+});
+```
+
+The factory closure receives the container itself as `$c`. Use `$c->make(ClassName::class)` to pull in any already-registered service your new service depends on.
+
+### Step 2: Register your controller binding (if needed)
+
+If the controller for this feature takes your service as a constructor argument, register a `bind()` for it.
+
+Use `bind()` for controllers rather than `singleton()`. A fresh controller instance per request is the correct behaviour — controllers can carry request-specific state.
+
+```php
+$container->bind(\App\Controllers\InvoiceController::class, function ($c) {
+    return new \App\Controllers\InvoiceController(
+        $c->make(\App\Services\InvoiceService::class)
+    );
+});
+```
+
+### Step 3: Declare the dependency in your controller constructor
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use App\Core\BaseController;
+use App\Core\Request;
+use App\Core\Response;
+use App\Services\InvoiceService;
+
+class InvoiceController extends BaseController
+{
+    public function __construct(
+        private InvoiceService $invoiceService
+    ) {}
+
+    public function index(Request $request, array $params): mixed
+    {
+        $result = $this->invoiceService->getForTenant($request->tenant['id']);
+
+        return $this->view('invoices/index', [
+            'invoices' => $result->get('invoices'),
+            'tenant'   => $request->tenant,
+            'user'     => $request->user,
+        ]);
+    }
+}
+```
+
+### Step 4: Register your route
+
+Nothing about the route definition changes. The container is invisible to the routing layer.
+
+```php
+$router->add('GET', '/tenant/{tenant_id}/invoices', 'InvoiceController@index', [$tm, $auth]);
+```
+
+The Router will find the controller binding you registered and build it with your service already in place.
+
+---
+
+## A complete worked example
+
+Here is the full pattern for a new feature — an `InvoiceService` that sends emails and writes to the database.
+
+**`Services/InvoiceService.php`**
+
+```php
+<?php
+
+namespace App\Services;
+
+use PDO;
+use App\Services\Email\EmailService;
+
+class InvoiceService
+{
+    public function __construct(
+        private EmailService $emailService,
+        private PDO          $pdo,
+        private string       $currency = 'GBP'
+    ) {}
+
+    public function send(int $tenantId, int $invoiceId): ServiceResult
+    {
+        // fetch, validate, build email, send
+        $result = $this->emailService->sendInvoice($email, $name, $invoiceUrl);
+
+        if (!$result->success) {
+            return ServiceResult::failure('Email failed: ' . $result->error);
+        }
+
+        return ServiceResult::success('Invoice sent.', ['invoice_id' => $invoiceId]);
+    }
+}
+```
+
+**In `bootstrap.php`** — added after the framework singletons:
+
+```php
+$container->singleton(\App\Services\InvoiceService::class, function ($c) use ($config) {
+    return new \App\Services\InvoiceService(
+        emailService: $c->make(\App\Services\Email\EmailService::class),
+        pdo:          \App\Core\Database::getPdo(),
+        currency:     $config['app']['currency'] ?? 'GBP'
+    );
+});
+
+$container->bind(\App\Controllers\InvoiceController::class, function ($c) {
+    return new \App\Controllers\InvoiceController(
+        $c->make(\App\Services\InvoiceService::class)
+    );
+});
+```
+
+**Result:** `EmailService` is built once from `.env`. `InvoiceService` receives it. `InvoiceController` receives `InvoiceService`. The controller method never calls `new` on anything.
+
+---
+
+## Sending a new type of email
+
+If your service needs to send an email type that does not already exist on `EmailService`, the right place to add it is `EmailService` itself — not inside your service.
+
+Add a `send*()` method that accepts business data and builds the `EmailMessage` internally:
+
+```php
+// In Services/Email/EmailService.php
+
+public function sendInvoice(string $email, string $name, string $invoiceUrl): EmailResult
+{
+    $htmlBody = InvoiceEmailTemplate::buildHtml($name, $invoiceUrl);
+    $textBody = InvoiceEmailTemplate::buildText($name, $invoiceUrl);
+
+    return $this->send(new EmailMessage(
+        credentialsUserName:   $this->username,
+        credentialsUserSecret: $this->password,
+        to:                    $email,
+        toName:                $name,
+        subject:               'Your Invoice',
+        htmlBody:              $htmlBody,
+        textBody:              $textBody,
+        from:                  $this->fromEmail,
+        fromName:              $this->fromName,
+        replyTo:               $this->replyToEmail,
+    ));
+}
+```
+
+Your service calls `$this->emailService->sendInvoice(...)` and receives an `EmailResult`. It never sees credentials, SMTP configuration, or PHPMailer.
+
+<Note>
+This is the rule: EmailService owns how emails are sent. Your services own what gets sent and when. Call sites pass business data only — never SMTP configuration.
+</Note>
+
+---
+
+## The singleton vs bind distinction
+
+**`singleton()`** — the factory is called once. Every `make()` call after the first returns the same instance.
+
+Use singleton for services. They are stateless and safe to share. Building them once is also more efficient when multiple controllers or services depend on the same thing.
+
+**`bind()`** — the factory is called fresh on every `make()`.
+
+Use bind for controllers. A controller can accumulate request-specific state, so a fresh instance per request is safer. In practice the difference is academic for most controllers, but it is the correct default.
+
+---
+
+## What you do not need to register
+
+**Models.** Construct them with `new ModelName()` inside your service constructor. `BaseModel` resolves its database connection automatically.
+
+**Middleware.** The Router constructs middleware directly. It has no constructor dependencies.
+
+**Controllers with no constructor arguments.** The Router falls back to `new ControllerName()` for any controller that has no container binding. If your controller does not need anything injected, you do not need to register it.
+
+**`Request` and `Response`.** These are per-request value objects, not services.
+
+---
+
+## Updating MYAPP.md
+
+Every container binding you add for application code is an application-owned decision. When you register a new service or controller binding, update MYAPP.md at the same time.
+
+In the Services section of MYAPP.md, record:
+
+- the service class name
+- what it depends on
+- whether it is registered as `singleton` or `bind`
+- a brief description of what it does
+
+This keeps the AI context file accurate, which in turn means future AI sessions can work with the container correctly without guessing.
+
+---
+
+## Conclusion
+
+The DI container brings FrankPHP into architectural alignment with how every major PHP framework handles service construction — without giving up what makes FrankPHP useful for explicit, agentic development.
+
+There is no scanning, no reflection, no magic resolution. Every binding is a readable PHP closure in one file. You can trace any service back to exactly where it is built and exactly what it was given. When something breaks, you know where to look.
+
+The container is also designed to stay out of the way. Most controllers in a FrankPHP application have no constructor dependencies and require no registration at all. You only engage the container when you are building something that genuinely needs it.
+
+That is the FrankPHP approach: bring in the right architectural patterns, but only as much of them as is actually useful.
