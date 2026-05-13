@@ -47,7 +47,8 @@
 		  {
 			  "group" : "ARCHITECTURE",
 			  "pages": [
-				  "architecture/environment-configuration"
+				  "architecture/environment-configuration",
+				  "architecture/dependency-injection"
 			  ]
 		  }     
         ]
