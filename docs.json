@@ -34,7 +34,8 @@
             "group" : "GETTING STARTED",
             "pages": [
               "getting-started/get-frankphp-running-rewritten",
-              "getting-started/working-with-myapp"
+              "getting-started/working-with-myapp",
+	      "getting-email-up-and-running"
             ]
           },
           {
