@@ -1,0 +1,163 @@
+---
+title: "Getting Email Up and Running"
+description: "Configure transactional email services for FrankPHP using SMTP via PHPMailer and understand the system communication architecture."
+---
+
+# Getting Email Up and Running
+
+By the end of this guide, you will have configured transactional email services for FrankPHP. You'll ensure that system-level triggers (like platform alerts and user signups) work out of the box, and you'll understand how to dispatch emails down to your individual tenant users.
+
+FrankPHP relies on a robust, zero-dependency SMTP configuration mapped through standard PHP environment variables. Like the database setup, it requires no external package builders.
+
+---
+
+## Step 1: Understand the Email Architecture
+
+Before writing config values, it's essential to understand how FrankPHP routes communication. The framework differentiates between two distinct directions of flow:
+
+* **Platform-to-Owner (Upward/System Alerts):** Automated operational triggers sent from FrankPHP directly to you (the `MAIL_SITE_ADMIN`), or automated alerts sent to a Tenant Owner when significant structural events happen.
+* **Owner-to-User (Downward/Transactional):** Functional, programmatic transactional emails driven by application events—such as password resets, verification codes, or a Tenant Owner pushing invitations down to new individual users.
+
+<Warning>
+**Transactional Only:** FrankPHP’s email architecture is designed strictly for **transactional emails** (system notifications, invites, resets). It is not built or intended for marketing newsletters, sequence blasts, or bulk promotional tracking.
+</Warning>
+
+---
+
+## Step 2: Configure Your Environment Credentials
+
+Open your root `.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
+
+<pre><code># ---------------------------------------------------------------
+# EMAIL (SMTP via PHPMailer)
+# ---------------------------------------------------------------
+MAIL_HOST=smtp.yourmailprovider.com
+MAIL_PORT=587
+MAIL_USERNAME=your_smtp_username
+MAIL_PASSWORD=your_smtp_password
+MAIL_FROM_ADDRESS=you@yourdomain.com
+MAIL_FROM_NAME="Your App Name"
+MAIL_REPLY_TO=you@yourdomain.com
+
+# ---------------------------------------------------------------
+# EMAIL (Recipient of Platform Level Alert Messages)
+# ---------------------------------------------------------------
+MAIL_SITE_ADMIN=admin@yourdomain.com</code></pre>
+
+### Configuration Checklist
+
+* **`MAIL_HOST` & `MAIL_PORT`:** Provided by your SMTP provider (Mailgun, Postmark, SendGrid, Amazon SES, or your shared hosting mail server).
+* **`MAIL_FROM_ADDRESS`:** The address your users see. Ensure this matches your domain SPF/DKIM records to guarantee high deliverability.
+* **`MAIL_SITE_ADMIN`:** The absolute root address where you want to receive framework-level alerts (e.g., system exceptions, security flags, or platform notification updates).
+
+---
+
+## Step 3: Test a Native Framework Flow (Password Reset)
+
+Now that your credentials live securely in `.env`, the framework's single SMTP gateway (`EmailService`) will automatically inject them when spawned by the Dependency Injection Container.
+
+Let’s verify it works by unlocking the **Forgot My Password** workflow:
+
+1. Navigate to your app login screen (`https://app.yoursite.com`).
+2. Click **Forgot my password**.
+3. Input the seed user email: `owner@tenant1.com`.
+4. Check your inbox.
+
+---
+
+## Step 4: Customising Email Templates
+
+FrankPHP avoids complex, bloated templating engines. Following the framework philosophy of *"explicit over magic,"* email layouts are constructed dynamically using standard PHP objects.
+
+Every convenience method inside `EmailService` maps business inputs to an underlying `EmailMessage` value object. If you want to change the visual design of an existing template, you can alter the template wrappers inside the `App\Services\Email` subdirectory.
+
+For example, a password reset template builds its layout using explicit markup structures:
+
+<pre><code>// Example of how FrankPHP constructs HTML layouts safely inside EmailService
+public function sendPasswordReset(string $email, string $name, string $resetUrl): EmailResult
+{
+    $htmlBody = "
+        &lt;div style='font-family: sans-serif; padding: 20px; color: #1f2937;'&gt;
+            &lt;h2&gt;Hello, " . htmlspecialchars($name) . "&lt;/h2&gt;
+            &lt;p&gt;We received a request to reset your password for your account.&lt;/p>
+            &lt;p&gt;&lt;a href='" . htmlspecialchars($resetUrl) . "' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;'&gt;Reset Password&lt;/a&gt;&lt;/p&gt;
+            &lt;p&gt;If you did not make this request, you can safely ignore this email.&lt;/p&gt;
+        &lt;/div&gt;
+    ";
+
+    return $this->send(new EmailMessage(
+        credentialsUserName:   $this->username,
+        credentialsUserSecret: $this->password,
+        to: $email,
+        toName: $name,
+        subject: 'Password Reset Request',
+        htmlBody: $htmlBody
+    ));
+}</code></pre>
+
+You are completely free to open these methods up and tweak the inline CSS tokens (`#6366f1`) to align with your personal brand palette.
+
+---
+
+## Step 5: How to Trigger an Owner-to-User Notification
+
+When building new features, you will often need to let a Tenant Owner push communications downward to their users. Following the *"delegate, don't decide"* service design pattern, your controllers should never handle email construction directly. They pass data to `EmailService`.
+
+Here is how you can explicitly call a downward communication sequence inside a custom controller action (such as inviting a new team member to a tenant):
+
+<pre><code>namespace App\Controllers;
+
+use App\Core\BaseController;
+use App\Core\Request;
+use App\Core\Response;
+use App\Services\Email\EmailService;
+
+class TeamInvitationController extends BaseController
+{
+    // Inject EmailService straight through the constructor via bootstrap.php
+    public function __construct(
+        private EmailService $emailService
+    ) {}
+
+    public function sendInvite(Request $request, array $params): mixed
+    {
+        // 1. Fetch targeted recipient details from form input
+        $targetEmail = $request->input('email');
+        $targetName  = $request->input('name');
+        $inviteUrl   = "https://app.yoursite.com/signup?invite=token123";
+
+        // 2. Instruct the service gateway to deliver the payload
+        $result = $this->emailService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
+
+        if ($result->success) {
+            return Response::redirect("/tenant/{$request->tenant['id']}/team?success=invited");
+        }
+
+        // 3. Gracefully return execution errors to the view layer
+        return $this->view('team/invite', [
+            'error' => 'Could not send invitation: ' . $result->message
+        ]);
+    }
+}</code></pre>
+
+---
+
+## What Just Happened Behind the Scenes
+
+Every time FrankPHP distributes an email:
+
+1. **Context Handoff:** The controller receives an interactive action context and passes raw business targets to the injected `EmailService` dependency.
+2. **Environment Assembly:** `EmailService` processes the request using values compiled from your secure `.env` file during the initial bootstrap timeline.
+3. **Encapsulation & Dispatch:** The internal service encapsulates metadata securely into an immutable `EmailMessage` object, which is dispatched via SMTP.
+4. **Upstream Response:** An `EmailResult` envelope returns upstream—providing the invoking controller explicit confirmation of delivery success or a clean, diagnostic error string on failure.
+
+No magic background queues to stall out on shared hosting. Complete visibility, fast, and completely traceable.
+
+---
+
+## Next Steps
+
+Now that database records and external communication protocols are established, you're ready to tailor the application scaffolding to match your specific product goals:
+
+* **Understand code architecture** — Open up `MYAPP.md` and define your custom application tables, routes, and structural shifts.
+* **Add a custom model** — Learn how to inherit from `BaseModel` to securely read, write, and safely cast domain schemas.
