@@ -19,7 +19,7 @@ Before writing config values, it's essential to understand how FrankPHP routes c
 * **Owner-to-User (Downward/Transactional):** Functional, programmatic transactional emails driven by application events—such as password resets, verification codes, or a Tenant Owner pushing invitations down to new individual users.
 
 <Warning>
-    **Transactional Only:** FrankPHP’s email architecture is designed strictly for **transactional emails** (system notifications, invites, resets). It is not built or intended for marketing newsletters, sequence blasts, or bulk promotional tracking.
+**Transactional Only:** FrankPHP’s email architecture is designed strictly for **transactional emails** (system notifications, invites, resets). It is not built or intended for marketing newsletters, sequence blasts, or bulk promotional tracking.
 </Warning>
 
 ---
@@ -28,12 +28,11 @@ Before writing config values, it's essential to understand how FrankPHP routes c
 
 Open your root `.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
 
-<pre>
-    <code>
-        # ---------------------------------------------------------------
-        # EMAIL (SMTP via PHPMailer)
-        # ---------------------------------------------------------------
-        MAIL_HOST=smtp.yourmailprovider.com
+```php
+# ---------------------------------------------------------------
+# EMAIL (SMTP via PHPMailer)
+# ---------------------------------------------------------------
+MAIL_HOST=smtp.yourmailprovider.com
 MAIL_PORT=587
 MAIL_USERNAME=your_smtp_username
 MAIL_PASSWORD=your_smtp_password
@@ -41,12 +40,11 @@ MAIL_FROM_ADDRESS=you@yourdomain.com
 MAIL_FROM_NAME="Your App Name"
 MAIL_REPLY_TO=you@yourdomain.com
 
-        # ---------------------------------------------------------------
+# ---------------------------------------------------------------
 # EMAIL (Recipient of Platform Level Alert Messages)
 # ---------------------------------------------------------------
 MAIL_SITE_ADMIN=admin@yourdomain.com
-</code>
-</pre>
+```
 
 ### Configuration Checklist
 
@@ -77,33 +75,29 @@ Every convenience method inside `EmailService` maps business inputs to an underl
 
 For example, a password reset template builds its layout using explicit markup structures:
 
-<pre>
-    <code>
-
-        //Example of how FrankPHP constructs HTML layouts safely inside EmailService
-        public function sendPasswordReset(string $email, string $name, string $resetUrl): EmailResult
-        \{
-            $htmlBody = "
-                &lt;div style='font-family: sans-serif; padding: 20px; color: #1f2937;'&gt;
+```php
+// Example of how FrankPHP constructs HTML layouts safely inside EmailService
+public function sendPasswordReset(string $email, string $name, string $resetUrl): EmailResult
+{
+    $htmlBody = "
+        &lt;div style='font-family: sans-serif; padding: 20px; color: #1f2937;'&gt;
             &lt;h2&gt;Hello, " . htmlspecialchars($name) . "&lt;/h2&gt;
             &lt;p&gt;We received a request to reset your password for your account.&lt;/p>
             &lt;p&gt;&lt;a href='" . htmlspecialchars($resetUrl) . "' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;'&gt;Reset Password&lt;/a&gt;&lt;/p&gt;
             &lt;p&gt;If you did not make this request, you can safely ignore this email.&lt;/p&gt;
-            &lt;/div&gt;
-            ";
+        &lt;/div&gt;
+    ";
 
-            return $this->send(new EmailMessage(
-            credentialsUserName:   $this->username,
-            credentialsUserSecret: $this->password,
-            to: $email,
-            toName: $name,
-            subject: 'Password Reset Request',
-            htmlBody: $htmlBody
-            ));
-        }
-
-    </code>
-</pre>
+    return $this->send(new EmailMessage(
+        credentialsUserName:   $this->username,
+        credentialsUserSecret: $this->password,
+        to: $email,
+        toName: $name,
+        subject: 'Password Reset Request',
+        htmlBody: $htmlBody
+    ));
+}
+```
 
 You are completely free to open these methods up and tweak the inline CSS tokens (`#6366f1`) to align with your personal brand palette.
 
@@ -115,45 +109,42 @@ When building new features, you will often need to let a Tenant Owner push commu
 
 Here is how you can explicitly call a downward communication sequence inside a custom controller action (such as inviting a new team member to a tenant):
 
-<pre>
-    <code>
+```php
+namespace App\Controllers;
 
-    namespace App\Controllers;
+use App\Core\BaseController;
+use App\Core\Request;
+use App\Core\Response;
+use App\Services\Email\EmailService;
 
-    use App\Core\BaseController;
-    use App\Core\Request;
-    use App\Core\Response;
-    use App\Services\Email\EmailService;
-
-    class TeamInvitationController extends BaseController
-\{
+class TeamInvitationController extends BaseController
+{
     // Inject EmailService straight through the constructor via bootstrap.php
     public function __construct(
-    private EmailService $emailService
-    ) \{}
+        private EmailService $emailService
+    ) {}
 
     public function sendInvite(Request $request, array $params): mixed
-\{
-    // 1. Fetch targeted recipient details from form input
-    $targetEmail = $request->input('email');
-    $targetName  = $request->input('name');
-    $inviteUrl   = "https://app.yoursite.com/signup?invite=token123";
+    {
+        // 1. Fetch targeted recipient details from form input
+        $targetEmail = $request->input('email');
+        $targetName  = $request->input('name');
+        $inviteUrl   = "https://app.yoursite.com/signup?invite=token123";
 
-    // 2. Instruct the service gateway to deliver the payload
-    $result = $this->emailService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
+        // 2. Instruct the service gateway to deliver the payload
+        $result = $this->emailService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
 
-    if ($result->success) {
-    return Response::redirect("/tenant/{$request->tenant['id']}/team?success=invited");
+        if ($result->success) {
+            return Response::redirect("/tenant/{$request->tenant['id']}/team?success=invited");
+        }
+
+        // 3. Gracefully return execution errors to the view layer
+        return $this->view('team/invite', [
+            'error' => 'Could not send invitation: ' . $result->message
+        ]);
+    }
 }
-
-    // 3. Gracefully return execution errors to the view layer
-    return $this->view('team/invite', [
-    'error' => 'Could not send invitation: ' . $result->message
-    ]);
-}
-
-    </code>
-</pre>
+```
 
 ---
 
