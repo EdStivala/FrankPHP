@@ -1,0 +1,309 @@
+---
+title: "Revisions and Migrations"
+description: "Plan FrankPHP upgrades safely by separating release revisions, fresh-install schema changes, and existing-data migrations."
+---
+
+# Revisions and Migrations
+
+FrankPHP is intentionally simple to ship: a versioned Zip, a small set of framework files, and clear context files that explain how the framework behaves.
+
+That simplicity does **not** mean every upgrade should be treated as a file overwrite.
+
+A FrankPHP revision can contain two different kinds of change:
+
+1. changes that affect new installs only
+2. changes that must be applied carefully to existing applications with live data
+
+This page explains how to handle that distinction.
+
+---
+
+## The core rule
+
+Treat every FrankPHP release as two related but separate deliverables:
+
+- the **framework revision**: files, docs, conventions, route changes, service changes, schema templates
+- the **migration path**: the deliberate steps needed to bring an existing application forward safely
+
+<Warning>
+Do not replace a live application's database schema wholesale with the fresh-install schema from a new framework release. A fresh-install schema describes what a new project should start with. A migration script describes how an existing project should move forward.
+</Warning>
+
+---
+
+## What counts as a revision?
+
+A revision is the complete framework state for a released version.
+
+For FrankPHP, that normally includes:
+
+- `VERSION`
+- `CHANGELOG.md`
+- `CODEBASE.md`
+- `RELEASE_MANIFEST.json`
+- framework-owned PHP files
+- `sql/schema.sql`
+- any migration scripts for existing installs
+- updated documentation
+
+The revision answers one question:
+
+> What is true about FrankPHP at this version?
+
+The migration answers a different question:
+
+> How does an existing application safely become compatible with this version?
+
+Both are needed.
+
+---
+
+## Fresh install versus existing install
+
+A fresh install has no customer data yet. It can use the latest framework schema directly.
+
+An existing install already has users, tenants, settings, timestamps, and application-owned tables. That data must be preserved.
+
+Use this decision table:
+
+| Situation | Use |
+|---|---|
+| Starting a brand new FrankPHP project | latest framework Zip and fresh `sql/schema.sql` |
+| Upgrading an existing app | release notes plus the version-specific migration script |
+| Comparing framework behaviour | `CHANGELOG.md`, `CODEBASE.md`, and `RELEASE_MANIFEST.json` |
+| Updating AI context for future coding sessions | latest `CODEBASE.md` plus the app's current `MYAPP.md` |
+
+---
+
+## The v1.3.0 example
+
+FrankPHP v1.3.0 introduced the framework's first formal date/time standard:
+
+> UTC at rest. Local at the edges.
+
+It also introduced `App\Core\Clock`, the framework-owned utility for UTC timestamp generation, timezone resolution, UTC/local conversion, and local-date query boundary calculation.
+
+That change affects both new installs and existing applications.
+
+For a new install, the corrected v1.3.0 schema can declare framework timestamp columns as UTC `DATETIME` from the start.
+
+For an existing install, the migration needs to inspect the current schema, guard against duplicate identity data, convert compatible `TIMESTAMP` columns safely, and avoid making assumptions about historical `DATETIME` values.
+
+---
+
+## Recommended upgrade workflow
+
+Follow this workflow for each FrankPHP release.
+
+## Step 1: Read the changelog entry
+
+Start with `CHANGELOG.md`.
+
+Look specifically for:
+
+- added framework utilities
+- changed framework rules
+- database changes
+- migration notes
+- build rules introduced for AI-assisted development
+
+For v1.3.0, the important rule is that persisted timestamps should be generated in UTC through `App\Core\Clock`, while local timezones are used only at input, output, and query-boundary edges.
+
+---
+
+## Step 2: Classify the release
+
+Ask what kind of release this is.
+
+| Release type | What to look for |
+|---|---|
+| Documentation-only | docs, examples, context files |
+| Framework behaviour | controllers, services, middleware, core utilities |
+| Schema-affecting | `sql/schema.sql`, framework tables, indexes |
+| Data-affecting | existing values must be transformed, normalised, or reviewed |
+| Application-contract affecting | `CODEBASE.md` rules that AI agents must now follow |
+
+v1.3.0 is a framework hygiene release, but it is also schema- and data-relevant because it formalises timestamp storage expectations and migration handling for MySQL timestamp columns.
+
+---
+
+## Step 3: Update framework files deliberately
+
+Framework-owned files should be updated as a versioned framework upgrade, not mixed into ordinary application feature work.
+
+Typical framework-owned files include:
+
+- `Core/Clock.php`
+- framework models such as `Models/User.php` and `Models/Tenant.php`
+- framework auth/signup services
+- `bootstrap.php`
+- `sql/schema.sql`
+- `CODEBASE.md`
+- `CHANGELOG.md`
+
+<Note>
+FrankPHP deliberately separates framework-owned files from application-owned files. Application features should continue to be documented in `MYAPP.md`; framework conventions belong in `CODEBASE.md`.
+</Note>
+
+---
+
+## Step 4: Run migration preflight checks
+
+Before changing a live database, run the release's preflight checks.
+
+For v1.3.0, one important preflight check is platform-wide email uniqueness:
+
+```sql
+SELECT email, COUNT(*) AS duplicate_count, GROUP_CONCAT(id ORDER BY id) AS user_ids
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;
+```
+
+If this returns rows, stop and resolve them before adding or enforcing a global `UNIQUE(email)` index.
+
+This is a product/account ownership decision, not a technical detail the migration should guess.
+
+---
+
+## Step 5: Run the version-specific migration script
+
+Use the migration script for the release, not the fresh-install schema.
+
+For v1.3.0, existing applications should use:
+
+```text
+migration_v_1.3.0.sql
+```
+
+The migration should be designed to handle existing installs carefully. For v1.3.0, that means:
+
+- detecting duplicate emails before enforcing global identity uniqueness
+- adding missing framework columns only when required
+- standardising the database session timezone during timestamp conversion
+- converting compatible framework `TIMESTAMP` columns to `DATETIME`
+- producing post-migration review queries
+
+---
+
+## Step 6: Treat historical timestamps carefully
+
+MySQL `DATETIME` stores a date and time but no timezone metadata.
+
+That means a migration cannot automatically know whether an old value was:
+
+- already UTC
+- local wall-clock time
+- generated by PHP on a server using local timezone
+- generated by SQL using the database session timezone
+
+If historical values were stored as local wall-clock values, correct them deliberately using the known source timezone.
+
+Example:
+
+```sql
+UPDATE some_table
+SET created_at = CONVERT_TZ(created_at, 'Europe/London', '+00:00')
+WHERE created_at IS NOT NULL;
+```
+
+<Warning>
+Only run a conversion like this when you know the previous values were stored in that local timezone. Do not apply timezone conversion blindly.
+</Warning>
+
+---
+
+## Step 7: Update application code to follow the new contract
+
+For v1.3.0, search application code for direct date/time usage:
+
+```text
+date(
+time(
+strtotime(
+new DateTime(
+new DateTimeImmutable(
+NOW()
+CURRENT_TIMESTAMP
+```
+
+Then replace persisted timestamp generation, local-date filters, and display formatting with `App\Core\Clock` patterns.
+
+The goal is not to make every line of date code look identical. The goal is to make the responsibility boundary consistent:
+
+| Concern | Belongs where |
+|---|---|
+| persisted timestamp generation | application/service/model code using `Clock` |
+| timezone resolution | service/controller boundary using explicit user/tenant/config context |
+| local input conversion | service/controller before storage |
+| UTC query range calculation | service/model before SQL query |
+| display-ready date labels | service/controller before rendering |
+| raw formatting or conversion in views | not allowed |
+
+---
+
+## Step 8: Update `MYAPP.md`
+
+If the application has date/time behaviour, record it in `MYAPP.md`.
+
+Useful things to document include:
+
+- which application tables store UTC `DATETIME` values
+- which columns are intentionally `DATE`
+- any historical timestamp corrections made during migration
+- any deliberate deviation from the framework rule
+- any application-specific timezone source beyond user, tenant, config, and UTC fallback
+
+<Note>
+A deliberate deviation can be documented. A view performing timezone conversion should not be treated as a deviation. It should be refactored.
+</Note>
+
+---
+
+## What to keep with each release
+
+A good FrankPHP release folder should leave you with enough information to answer three questions later:
+
+1. What changed?
+2. Why did it change?
+3. How did existing installs move safely?
+
+For v1.3.0, keep:
+
+- the release Zip
+- `CHANGELOG.md`
+- `CODEBASE.md`
+- the fresh-install schema
+- `migration_v_1.3.0.sql`
+- notes from any project-specific timestamp correction
+- the updated application `MYAPP.md`
+
+That is enough for a human developer or an AI assistant to understand the upgrade path without guessing.
+
+---
+
+## Practical release checklist
+
+Use this as the short version before upgrading an existing app.
+
+- Read the release changelog
+- Identify framework-owned file changes
+- Identify schema and data changes
+- Back up the database
+- Run preflight checks
+- Resolve duplicate identity records before migration
+- Run the version-specific migration script
+- Review post-migration output
+- Search application code for old date/time patterns
+- Replace persisted timestamp writes with `Clock`
+- Replace SQL local-date filters with UTC boundaries
+- Keep views free from timezone conversion
+- Update `MYAPP.md`
+
+---
+
+## Conclusion
+
+FrankPHP upgrades should stay simple, but they should not be casual.
+
+The safest approach is to keep the framework revision, fresh-install schema, and existing-install migration path separate. That lets FrankPHP stay lightweight while still protecting real application data as the platform evolves.
