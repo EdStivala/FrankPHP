@@ -28,7 +28,8 @@ Before writing config values, it's essential to understand how FrankPHP routes c
 
 Open your root `.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
 
-<pre><code># ---------------------------------------------------------------
+```php
+# ---------------------------------------------------------------
 # EMAIL (SMTP via PHPMailer)
 # ---------------------------------------------------------------
 MAIL_HOST=smtp.yourmailprovider.com
@@ -42,7 +43,8 @@ MAIL_REPLY_TO=you@yourdomain.com
 # ---------------------------------------------------------------
 # EMAIL (Recipient of Platform Level Alert Messages)
 # ---------------------------------------------------------------
-MAIL_SITE_ADMIN=admin@yourdomain.com</code></pre>
+MAIL_SITE_ADMIN=admin@yourdomain.com
+```
 
 ### Configuration Checklist
 
@@ -73,7 +75,8 @@ Every convenience method inside `EmailService` maps business inputs to an underl
 
 For example, a password reset template builds its layout using explicit markup structures:
 
-<pre><code>// Example of how FrankPHP constructs HTML layouts safely inside EmailService
+```php
+// Example of how FrankPHP constructs HTML layouts safely inside EmailService
 public function sendPasswordReset(string $email, string $name, string $resetUrl): EmailResult
 {
     $htmlBody = "
@@ -93,7 +96,8 @@ public function sendPasswordReset(string $email, string $name, string $resetUrl)
         subject: 'Password Reset Request',
         htmlBody: $htmlBody
     ));
-}</code></pre>
+}
+```
 
 You are completely free to open these methods up and tweak the inline CSS tokens (`#6366f1`) to align with your personal brand palette.
 
@@ -105,7 +109,8 @@ When building new features, you will often need to let a Tenant Owner push commu
 
 Here is how you can explicitly call a downward communication sequence inside a custom controller action (such as inviting a new team member to a tenant):
 
-<pre><code>namespace App\Controllers;
+```php
+namespace App\Controllers;
 
 use App\Core\BaseController;
 use App\Core\Request;
@@ -138,7 +143,8 @@ class TeamInvitationController extends BaseController
             'error' => 'Could not send invitation: ' . $result->message
         ]);
     }
-}</code></pre>
+}
+```
 
 ---
 
