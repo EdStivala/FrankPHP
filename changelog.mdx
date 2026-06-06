@@ -1,0 +1,174 @@
+---
+title: "Changelog"
+description: "A readable record of FrankPHP framework releases, including new capabilities, framework rules, fixes, and migration notes."
+rss: true
+---
+
+# Changelog
+
+This page records the public FrankPHP framework release history in a more readable form than the raw `CHANGELOG.md` file.
+
+Use it when you want to understand what changed between framework versions, whether a release affects existing installs, and which documentation or migration notes should be reviewed before upgrading.
+
+<Note>
+For upgrade planning, read this page alongside **Revisions and Migrations**. The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
+</Note>
+
+<Update label="6 June 2026" description="v1.3.0" tags={["Current", "Core", "Date/time", "Migration"]}>
+  ## Formal date and time handling
+
+  FrankPHP 1.3.0 introduces the framework's first formal date/time handling standard:
+
+  > UTC at rest. Local at the edges.
+
+  The headline addition is `App\Core\Clock`, a small framework-owned utility for UTC timestamp generation, UTC/local conversion, timezone validation, timezone resolution, and local-date query boundary calculation.
+
+  This release is primarily a framework hygiene and portability release. It reduces the risk of timezone drift between applications, servers, databases, and users.
+
+  ### Added
+
+  - `Core/Clock.php` as a stateless static framework utility.
+  - UTC timestamp helpers such as `Clock::nowUtcString()` and `Clock::utcOffsetString()`.
+  - UTC normalisation helpers such as `Clock::toUtcString()` and `Clock::parseUtc()`.
+  - Timezone validation and resolution helpers including `Clock::resolveTimezone()`.
+  - Local input conversion helpers including `Clock::localInputToUtcString()`.
+  - UTC-to-local display helpers including `Clock::formatUtcForTimezone()`.
+  - Local date query-boundary helpers including `Clock::utcRangeForLocalDate()` and `Clock::utcRangeForLocalDates()`.
+  - Local “now” helpers for display and input defaults only.
+  - `CODEBASE.md` documentation for Date and Time Handling and Framework Core Utilities.
+
+  ### Timezone resolution order
+
+  FrankPHP now has a formal timezone resolution order:
+
+  ```text
+  user.timezone
+  → tenant.timezone
+  → config['timezone']
+  → UTC
+  ```
+
+  Invalid or empty values are skipped. If no valid candidate is found, FrankPHP falls back to `UTC`.
+
+  ### Build rules introduced
+
+  - Use `App\Core\Clock` for persisted timestamp generation.
+  - Store exact instants as UTC `DATETIME`.
+  - Use `DATE` for date-only values with no time-of-day meaning.
+  - Do not use SQL `NOW()` or `CURRENT_TIMESTAMP` for application-managed timestamps.
+  - Do not calculate local date windows directly in SQL.
+  - Convert local user, tenant, or application input into UTC before storage.
+  - Convert UTC values into the resolved local timezone before display.
+  - Resolve timezone explicitly using `Clock::resolveTimezone($user, $tenant, $config)`.
+  - Do not let `Clock` read from `$_SESSION`, request globals, middleware state, controller globals, or the database.
+  - Do not call `Clock` from views.
+  - Services must prepare display-ready date labels for views.
+  - Views must not perform timezone conversion, timestamp comparison, date fallback logic, or relative date labelling.
+  - Document intentional application-level deviations in `MYAPP.md`.
+
+  ### Migration notes
+
+  Existing applications should add `Core/Clock.php` before refactoring date/time code.
+
+  Search existing code for direct date/time handling:
+
+  ```text
+  date(
+  time(
+  strtotime(
+  new DateTime(
+  new DateTimeImmutable(
+  NOW()
+  CURRENT_TIMESTAMP
+  ```
+
+  Replace persisted timestamp generation with `Clock`, and replace relative SQL date filters with UTC boundary values calculated in PHP.
+
+  Existing MySQL `TIMESTAMP` columns should be reviewed and classified before conversion. FrankPHP prefers UTC `DATETIME` for application-managed timestamps.
+
+  When converting MySQL `TIMESTAMP` to `DATETIME`, run the migration session in UTC:
+
+  ```sql
+  SET time_zone = '+00:00';
+  ```
+
+  <Warning>
+  Do not blindly convert date-only values. Values such as birthdays, anniversary dates, and local calendar-only due dates should use `DATE`, not `DATETIME`.
+  </Warning>
+
+  ### Fixed
+
+  This release does not include a runtime bug fix by itself. It prevents future timezone and server portability bugs by defining a single framework-wide date/time contract.
+</Update>
+
+<Update label="14 May 2026" description="v1.2.1" tags={["Email", "Config", "Fix"]}>
+  ## Mail configuration fix
+
+  FrankPHP 1.2.1 is a small configuration and signup-flow maintenance release.
+
+  ### Changed
+
+  - Added `admin_email` to the `config.php` mail array from `MAIL_SITE_ADMIN`.
+  - Added `.env` support for `MAIL_SITE_ADMIN=admin@yourdomain.com`.
+
+  ### Fixed
+
+  - Fixed `SignupService::initiateSignup` so it uses `EmailService` and the configured admin email correctly.
+</Update>
+
+<Update label="13 May 2026" description="v1.2.0" tags={["Core", "DI", "Email", "Signup"]}>
+  ## Dependency injection and signup email wiring
+
+  FrankPHP 1.2.0 adds the framework's minimal dependency injection container and uses it to cleanly wire email-related services and controllers.
+
+  ### Added
+
+  - `Core/Container.php`, a minimal explicit DI container with `singleton()`, `bind()`, `make()`, and `has()`.
+  - Container singleton registrations for `SignupService` and `PasswordResetService` in `bootstrap.php`.
+  - Container bindings for `AuthController` and `SignupController`.
+  - `EmailService::sendSignupVerification()` for signup verification emails.
+  - `EmailService::sendCoachAdvisory()` for tenant-owner advisory emails.
+  - `.env.example` key: `MAIL_ADVISORY_TO`.
+  - CODEBASE documentation for the DI container, framework services, and signup routes.
+
+  ### Changed
+
+  - `Core/Router.php` now accepts an optional `Container` and checks for controller bindings before falling back to direct construction.
+  - `AuthController` now receives `PasswordResetService` by constructor injection.
+  - `SignupController` now receives `SignupService` by constructor injection.
+  - `PasswordResetService` and `SignupService` no longer fall back to broken zero-argument `new EmailService()` construction.
+  - Signup email methods now delegate to the injected `EmailService` instead of carrying SMTP details at the call site.
+  - CODEBASE sections for request lifecycle, controllers, services, security notes, deliberate omissions, and framework ownership were updated.
+
+  ### Fixed
+
+  - Removed the `EmailService` construction failure caused by services falling back to `new EmailService()` without required SMTP configuration.
+  - Removed hardcoded SMTP credentials from `SignupService`; credentials now flow from `.env` to `config['mail']`, into `EmailService::fromConfig()`, and then through the container singleton.
+</Update>
+
+<Update label="8 May 2026" description="v1.1.1" tags={["AI context", "Documentation"]}>
+  ## MYAPP.md template and framework documentation updates
+
+  FrankPHP 1.1.1 strengthens the AI context workflow by adding the application-level documentation file used alongside `CODEBASE.md`.
+
+  ### Added
+
+  - `MYAPP.md` created as a template and added to the distribution.
+
+  ### Changed
+
+  - CODEBASE section 14 now documents AI instructions for creating and maintaining `MYAPP.md`.
+  - CODEBASE section 15 now documents framework tables around user and tenant management.
+</Update>
+
+<Update label="6 May 2026" description="v1.1.0" tags={["Config", "Environment"]}>
+  ## Framework configuration management
+
+  FrankPHP 1.1.0 introduces framework configuration management using `.env` values for core application settings.
+
+  ### Added
+
+  - Framework config management for FrankPHP Core and app code using `.env`.
+  - Email credentials incorporated into the single `.env` file.
+  - Syncfusion license key incorporated into the main `.env` file.
+</Update>

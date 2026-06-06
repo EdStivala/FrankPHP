@@ -9,12 +9,12 @@
     "href": "http://n3wmedia.com"
   },
   "integrations": {
-   "ga4": {
-     "measurementId": "G-EKYS32K25T"
+    "ga4": {
+      "measurementId": "G-EKYS32K25T"
     }
   },
   "colors": {
-    "primary": "#6366f1", 
+    "primary": "#6366f1",
     "light": "#818cf8",
     "dark": "#4f46e5"
   },
@@ -23,15 +23,15 @@
       {
         "tab": "Start Here/Glossary",
         "icon": "house",
-        "groups": [ 
+        "groups": [
           {
-            "group" : " ",
-              "pages": [
-                "getting-started/meet-frank"
-              ]
+            "group": " ",
+            "pages": [
+              "getting-started/meet-frank"
+            ]
           },
           {
-            "group" : "GETTING STARTED",
+            "group": "GETTING STARTED",
             "pages": [
               "getting-started/get-frankphp-running-rewritten",
               "getting-started/working-with-myapp",
@@ -39,21 +39,37 @@
             ]
           },
           {
-            "group" : "FEATURES",
+            "group": "FEATURES",
             "pages": [
               "features/ai-context-briefing",
-			  "features/version-management"
+              "features/version-management",
+              "features/revisions-and-migrations"
             ]
           },
-		  {
-			  "group" : "ARCHITECTURE",
-			  "pages": [
-				  "architecture/environment-configuration",
-				  "architecture/dependency-injection"
-			  ]
-		  }     
+          {
+            "group": "COOKBOOK",
+            "pages": [
+              "cookbook/using-clock-in-your-apps"
+            ]
+          },
+          {
+            "group": "ARCHITECTURE",
+            "pages": [
+              "architecture/environment-configuration",
+              "architecture/dependency-injection"
+            ]
+          }
         ]
       }
-  ]
-}
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Changelog",
+          "icon": "list",
+          "href": "/changelog"
+        }
+      ]
+    }
+  }
 }

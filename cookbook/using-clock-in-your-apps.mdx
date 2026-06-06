@@ -1,0 +1,452 @@
+---
+title: "Using Clock in Your Apps"
+description: "A practical cookbook for handling dates, times, timezones, and UTC storage with App\\Core\\Clock in FrankPHP v1.3.0."
+---
+
+# Using Clock in Your Apps
+
+FrankPHP v1.3.0 adds `App\Core\Clock`, a small framework-owned utility that gives every application the same date/time contract:
+
+> UTC at rest. Local at the edges.
+
+That sentence is the whole model.
+
+Store exact instants in UTC. Interpret user input in the user's local timezone. Format output in the resolved local timezone. Calculate local date filters in PHP before sending UTC boundaries to SQL.
+
+This cookbook shows the patterns to use in real application code.
+
+---
+
+## What Clock is for
+
+`Clock` owns mechanical date/time work:
+
+- current UTC timestamp generation
+- UTC offsets such as `+1 hour` or `-30 days`
+- timezone validation
+- timezone resolution from user, tenant, config, and fallback
+- local input conversion into UTC
+- UTC conversion back to local output
+- UTC query boundaries for local dates
+
+It does **not** own product semantics.
+
+Labels such as `Today`, `Yesterday`, `Never`, `Overdue`, `Recently active`, or `Dormant` belong in your Service layer because they are application decisions.
+
+---
+
+## The import
+
+Use `Clock` wherever application code needs to create, convert, or prepare date/time values.
+
+```php
+use App\Core\Clock;
+```
+
+`Clock` is a stateless static utility. It does not need a container binding.
+
+---
+
+## Resolve timezone first
+
+Most date/time code should start by resolving the timezone explicitly.
+
+```php
+$timezone = Clock::resolveTimezone(
+    $request->user,
+    $request->tenant,
+    $config
+);
+```
+
+FrankPHP resolves timezones in this order:
+
+```text
+user.timezone
+→ tenant.timezone
+→ config['timezone']
+→ UTC
+```
+
+Invalid or empty values are skipped automatically.
+
+<Note>
+Do not let `Clock` read from `$_SESSION`, middleware globals, request globals, or the database. Pass the user, tenant, and config context explicitly.
+</Note>
+
+---
+
+## Recipe: create a UTC timestamp for storage
+
+Use this when inserting or updating application-managed timestamp columns.
+
+```php
+use App\Core\Clock;
+
+$createdAt = Clock::nowUtcString();
+$updatedAt = Clock::nowUtcString();
+```
+
+Store those values in UTC `DATETIME` columns.
+
+Do not use:
+
+```php
+date('Y-m-d H:i:s');
+time();
+new DateTime('now');
+```
+
+Do not use this in SQL for framework-managed or application-managed timestamps:
+
+```sql
+NOW()
+CURRENT_TIMESTAMP
+```
+
+Use bound UTC values instead.
+
+---
+
+## Recipe: create an expiry timestamp
+
+Use `Clock::utcOffsetString()` for expiry windows and cutoffs.
+
+```php
+$expiresAt = Clock::utcOffsetString('+1 hour');
+```
+
+Example password reset token insert:
+
+```php
+$stmt = $pdo->prepare('
+    INSERT INTO password_reset_tokens
+        (tenant_id, user_id, token_hash, expires_at, created_at)
+    VALUES
+        (:tenant_id, :user_id, :token_hash, :expires_at, :created_at)
+');
+
+$stmt->execute([
+    'tenant_id' => $tenantId,
+    'user_id' => $userId,
+    'token_hash' => $tokenHash,
+    'expires_at' => Clock::utcOffsetString('+1 hour'),
+    'created_at' => Clock::nowUtcString(),
+]);
+```
+
+---
+
+## Recipe: convert a local form input into UTC
+
+Use this when a user enters a local date/time and the value represents an exact instant.
+
+Example form value:
+
+```text
+2026-06-06 14:30
+```
+
+Application code:
+
+```php
+$timezone = Clock::resolveTimezone($request->user, $request->tenant, $config);
+
+$startsAtUtc = Clock::localInputToUtcString(
+    $request->input('starts_at'),
+    $timezone,
+    'Y-m-d H:i'
+);
+```
+
+Store `$startsAtUtc` in a UTC `DATETIME` column.
+
+<Warning>
+Do not store the user's local wall-clock time in a `DATETIME` column unless the column explicitly documents that unusual behaviour. Normal FrankPHP application timestamps are UTC.
+</Warning>
+
+---
+
+## Recipe: handle a date-only value
+
+Some values are not instants in time.
+
+Examples:
+
+- birthday
+- anniversary date
+- local calendar-only due date
+- billing month date with no time-of-day meaning
+
+Use a `DATE` column for these values, not `DATETIME`.
+
+```php
+$birthday = $request->input('birthday'); // e.g. 1990-04-12
+```
+
+Store it as a date.
+
+Do not convert it to UTC. There is no hour, minute, or timezone to convert.
+
+---
+
+## Recipe: format a stored UTC value for display
+
+Convert UTC values to the resolved timezone before passing them to a view.
+
+```php
+$timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+$lastSeenLabel = $row['last_seen_at']
+    ? Clock::formatUtcForTimezone($row['last_seen_at'], $timezone, 'j M Y, H:i')
+    : 'Never seen';
+```
+
+Then pass the prepared label to the view:
+
+```php
+return $this->view('users/profile', [
+    'title' => 'User Profile',
+    'lastSeenLabel' => $lastSeenLabel,
+]);
+```
+
+The view echoes the value:
+
+```php
+<?= htmlspecialchars($lastSeenLabel) ?>
+```
+
+The view does not call `Clock`.
+
+---
+
+## Recipe: filter records for a local date
+
+This is one of the most important `Clock` patterns.
+
+A user may ask for records on `2026-06-06` in `Europe/London`. The database stores UTC. The application must calculate the UTC start and end boundaries for that local date before querying.
+
+```php
+$timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+$range = Clock::utcRangeForLocalDate('2026-06-06', $timezone);
+
+$stmt = $pdo->prepare('
+    SELECT *
+    FROM bookings
+    WHERE tenant_id = :tenant_id
+      AND starts_at BETWEEN :start_utc AND :end_utc
+    ORDER BY starts_at ASC
+');
+
+$stmt->execute([
+    'tenant_id' => $tenantId,
+    'start_utc' => $range['start'],
+    'end_utc' => $range['end'],
+]);
+```
+
+Do not calculate local date windows directly in SQL.
+
+---
+
+## Recipe: filter records across a local date range
+
+Use this for reports, calendars, dashboards, and exports.
+
+```php
+$timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+$range = Clock::utcRangeForLocalDates(
+    $request->input('from_date'),
+    $request->input('to_date'),
+    $timezone
+);
+
+$stmt = $pdo->prepare('
+    SELECT *
+    FROM events
+    WHERE tenant_id = :tenant_id
+      AND starts_at >= :start_utc
+      AND starts_at <= :end_utc
+    ORDER BY starts_at ASC
+');
+
+$stmt->execute([
+    'tenant_id' => $tenantId,
+    'start_utc' => $range['start'],
+    'end_utc' => $range['end'],
+]);
+```
+
+This keeps daylight-saving transitions and timezone offsets out of SQL and inside the framework utility that owns them.
+
+---
+
+## Recipe: get today for an input default
+
+Sometimes you need a local date for an input default.
+
+```php
+$timezone = Clock::resolveTimezone($request->user, $request->tenant, $config);
+
+$defaultDate = Clock::todayForTimezone($timezone);
+```
+
+Pass it to the view:
+
+```php
+return $this->view('reports/index', [
+    'title' => 'Reports',
+    'defaultDate' => $defaultDate,
+]);
+```
+
+Use this for display and input defaults only. Do not persist `nowForTimezone()` values as application timestamps.
+
+---
+
+## Recipe: prepare a display model in a Service
+
+This is the preferred FrankPHP pattern.
+
+The Service handles business logic and display preparation. The Controller passes the result to the view. The view renders only.
+
+```php
+use App\Core\Clock;
+use App\Services\ServiceResult;
+
+class BookingService
+{
+    public function getBookingSummary(
+        int $tenantId,
+        int $bookingId,
+        array $user,
+        array $tenant,
+        array $config
+    ): ServiceResult {
+        $booking = $this->bookingModel->find($bookingId, $tenantId);
+
+        if (!$booking) {
+            return ServiceResult::failure('Booking not found');
+        }
+
+        $timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+        return ServiceResult::success('Booking loaded', [
+            'bookingId' => $booking->id,
+            'customerName' => $booking->customer_name,
+            'startsAtLabel' => Clock::formatUtcForTimezone(
+                $booking->starts_at,
+                $timezone,
+                'j M Y, H:i'
+            ),
+            'timezoneLabel' => $timezone,
+        ]);
+    }
+}
+```
+
+The view receives `startsAtLabel`. It does not decide how to format `starts_at`.
+
+---
+
+## Recipe: migrate an existing private helper
+
+Some applications may already have local helpers such as `utcNow()`.
+
+During migration, keep the call sites stable and delegate the helper to `Clock` temporarily.
+
+```php
+use App\Core\Clock;
+
+private function utcNow(): string
+{
+    return Clock::nowUtcString();
+}
+```
+
+Then replace the helper call sites gradually.
+
+This keeps the migration safe and visible.
+
+---
+
+## Where Clock should and should not be used
+
+| Layer | Use Clock? | Rule |
+|---|---:|---|
+| Service | Yes | preferred place for conversion, labels, and date filters |
+| Controller | Sometimes | acceptable for request-boundary conversion or simple orchestration |
+| Model | Sometimes | acceptable for framework/application timestamp writes and UTC query parameters |
+| View | No | views receive ready-to-render values |
+| SQL | No | SQL receives UTC parameters; it does not calculate local date logic |
+| Middleware | Rarely | only if middleware explicitly owns a date/time concern |
+
+---
+
+## The build rules
+
+When building or reviewing FrankPHP code, apply these rules:
+
+- Use `App\Core\Clock` for persisted timestamp generation.
+- Store exact instants as UTC `DATETIME`.
+- Use `DATE` for date-only values.
+- Do not use SQL `NOW()` or `CURRENT_TIMESTAMP` for application-managed timestamps.
+- Convert local user, tenant, or app input into UTC before storage.
+- Convert UTC values into the resolved local timezone before display.
+- Calculate local date query boundaries in PHP through `Clock`.
+- Resolve timezone explicitly using `Clock::resolveTimezone($user, $tenant, $config)`.
+- Do not call `Clock` from views.
+- Services must prepare display-ready date labels for views.
+- Document intentional application-level deviations in `MYAPP.md`.
+
+---
+
+## Common mistakes
+
+### Mistake: using SQL `DATE(starts_at)` for local calendar filtering
+
+This usually filters by the database/session interpretation of the stored value, not the user's local calendar day.
+
+Use `Clock::utcRangeForLocalDate()` instead.
+
+### Mistake: storing local input directly
+
+If a user in `Europe/London` enters `2026-06-06 14:30`, that is a local input value. Convert it to UTC before storage.
+
+### Mistake: formatting in the view
+
+This spreads timezone rules into templates and makes the app harder for AI tools to reason about.
+
+Prepare labels in Services or Controllers.
+
+### Mistake: converting `DATE` values
+
+A birthday is not a timestamp. Keep it as `DATE`.
+
+---
+
+## Quick reference
+
+| Need | Method |
+|---|---|
+| Current UTC timestamp object | `Clock::nowUtc()` |
+| Current UTC storage string | `Clock::nowUtcString()` |
+| UTC offset string | `Clock::utcOffsetString('+1 hour')` |
+| Validate timezone | `Clock::isValidTimezone($timezone)` |
+| Resolve user/tenant/app timezone | `Clock::resolveTimezone($user, $tenant, $config)` |
+| Convert local input to UTC string | `Clock::localInputToUtcString($value, $timezone, $format)` |
+| Format UTC for local display | `Clock::formatUtcForTimezone($value, $timezone, $format)` |
+| Get UTC range for one local date | `Clock::utcRangeForLocalDate($date, $timezone)` |
+| Get UTC range for local date range | `Clock::utcRangeForLocalDates($from, $to, $timezone)` |
+| Local today for input default | `Clock::todayForTimezone($timezone)` |
+
+---
+
+## Conclusion
+
+`Clock` is deliberately small, but it changes the reliability of every FrankPHP application.
+
+Use UTC for stored instants. Use local timezones at the edges. Keep views simple. Keep SQL timezone-neutral. Let Services prepare the values the user actually sees.
