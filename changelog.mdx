@@ -14,14 +14,117 @@ Use it when you want to understand what changed between framework versions, whet
 For upgrade planning, read this page alongside **Revisions and Migrations**. The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
 </Note>
 
-<Update label="6 June 2026" description="v1.3.0" tags={["Current", "Core", "Date/time", "Migration"]}>
+<Update label="6 August 2026" description="v2.0.0" tags={["Current", "Breaking", "Architecture", "Framework/App split"]}>
+  ## The framework/application split
+
+  FrankPHP 2.0.0 is the **framework/application split**: the single project folder is now two independent sibling folders, `framework/` and `app/`, each with its own PSR-4 namespace root (`Frank\` and `App\`, no searching or fallback between them). `framework/` contains nothing but framework-owned code and is meant to be replaced wholesale on every future update. `app/` — routes, business logic, views, public assets, config, `.env`, and `MYAPP.md` — is never touched by an update once you've customized it.
+
+  This release is also the precursor to distributing FrankPHP through GitHub Releases rather than a single Gumroad zip.
+
+  ### Added
+
+  - `app/` as a sibling of `framework/` — the application half of the split: `Controllers/`, `Models/`, `Services/`, `Presenters/` (empty, ready for application code), plus `Views/`, `public/`, `Config/config.php`, `.env`/`env.example`, `MYAPP.md`, and `Scaffold/examples/` (cookbook-style reference implementations, moved out of live framework code, not deleted).
+  - `Controllers/AccountSettingsController.php` — per-user account settings, no role restriction (distinct from the admin/owner-only `TenantSettingsController`).
+  - `Container::override()` and `Router::override()` — the one supported way to deliberately replace a framework-registered binding or route from application code.
+  - `Database::runSchemaFileIfMissingTable()` promoted to a general-purpose primitive — applications can now call it a second time for their own `app/sql/schema.app.sql`.
+  - `config('mail.templates')` — optional per-application overrides for the three framework-required email templates (signup verification, password reset, platform-owner alert), without ever editing the framework's own template files.
+  - `FRANK_VERSION` constant, read once from `framework/VERSION`.
+
+  ### Changed
+
+  - Every framework class renamed from `App\...` to `Frank\...`.
+  - All framework routes now consistently use fully-qualified `Frank\Controllers\...` and `Frank\Middleware\...` handler/middleware strings.
+  - `framework/bootstrap.php` now hard-requires `app/bootstrap.php` as its final step. A missing `app/bootstrap.php` is a fatal boot error by design.
+  - `singleton()`/`bind()`/`add()` now throw on a duplicate id/route instead of silently allowing one component to shadow another — `override()` is the deliberate exception.
+  - Fixed a real bug: `TenantSettingsController`'s forbidden-access check previously redirected a rejected user back to the exact same gated route, causing an infinite redirect loop. It now redirects to the tenant dashboard.
+  - Fixed a schema-path resolution bug and a double database-seeding bug in `Core/Database.php`.
+  - Removed hardcoded branding defaults from `EmailMessage`'s constructor — `from`/`fromName` are now required arguments on every call site.
+
+  ### Removed
+
+  - `cron_task_reminders.php` and its email template — a broken, unused feature referencing a `Task` model that never existed.
+  - `POST /api/v1/tenant/{tenant_id}/organizations` is no longer a live framework route — moved to `app/Scaffold/examples/organization/` as a reference implementation.
+
+  <Warning>
+  This release renames every framework namespace from `App\` to `Frank\` and restructures the project into two sibling folders. Existing installs need a deliberate migration, not a file overwrite — see **Revisions and Migrations**.
+  </Warning>
+</Update>
+
+<Update label="9 June 2026" description="v1.4.0" tags={["Admin", "Users", "Dashboard"]}>
+  ## User Management Dashboard
+
+  FrankPHP 1.4.0 introduces the framework's first built-in admin view: the **User Management Dashboard**, available to any user with role `owner` or `admin` at `GET /tenant/{tenant_id}/users`.
+
+  The dashboard provides a tenant-scoped view of all users with four KPI stat cards and a full sortable user table, following the existing Service → Controller → View contract throughout — the view performs no computation.
+
+  ### Added
+
+  - `Services/UserManagementService.php` — new framework-owned singleton. `getUserDashboard()` computes four KPI stats (`totalUsers`, `activePercent`, `neverLoggedIn`, `inactiveThirtyDays`) from a single `User::allByTenant()` query, with no additional DB round-trips.
+  - `Controllers/UserManagementController.php` — role-gates to `admin`/`owner`; non-privileged users are redirected to the dashboard with `?error=forbidden`.
+  - `Views/users/management-dashboard.php` — stat cards and user table, all values pre-computed by the service.
+  - `public/assets/css/app-pages-users.css` — `.stat-card`, `.users-table`, `.role-badge` and their variants.
+  - `User::allByTenant(int $tenantId): array` — new model method; excludes sensitive columns.
+  - Route `GET /tenant/{tenant_id}/users`, and a new **Users** sidebar nav entry.
+
+  ### Changed
+
+  - `CODEBASE.md` received a comprehensive accuracy pass: directory structure, container bindings table, CSS file table, design tokens, and framework table schemas (`tenants`, `users`, and `signup_tokens` documented in full) were all corrected against the actual filesystem.
+
+  <Note>
+  `signup_tokens.tenant_id` is NULL for the entire lifetime of an unverified token — no tenant exists until signup completes, so per-tenant scoping of unverified signup tokens is structurally impossible.
+  </Note>
+</Update>
+
+<Update label="9 June 2026" description="v1.3.2" tags={["Core", "Models", "SoC", "Breaking"]}>
+  ## Strict Model/Service separation of concerns
+
+  FrankPHP 1.3.2 enforces a strict Model/Service separation of concerns across the entire framework. Models are now pure DB access layers — they never call `Clock` and contain no business logic.
+
+  Previously, `User` and `Tenant` generated their own timestamps internally, `SignupService` duplicated signup-token DB access with raw PDO and SQL `NOW()`, and several model methods contained business logic (hash verification, rate-limit decisions, name derivation) that belonged in Services.
+
+  ### Added
+
+  - `Services/UserService.php` — new framework-owned singleton. `recordLogin()` and `saveSettings()` own the writable-column allowlist and null-coercion rules for user preferences, computing timestamps via `Clock`.
+  - `Services/TenantService.php` — the parallel service for the tenant record.
+  - `User::insertUser()`, `User::findPendingSignupTokens()`, `User::countRecentSignupTokensByIp()` — new model methods replacing private helpers that had mixed DB access with business logic.
+
+  ### Changed
+
+  - Every `Clock::nowUtcString()`/`Clock::utcOffsetString()` call removed from `Models/User.php` and `Models/Tenant.php` — all methods now accept pre-computed UTC timestamp strings from the calling Service.
+  - `SignupService` no longer does raw PDO — all DB access now goes through `User` model methods; SQL `NOW()`/`DATE_SUB(NOW(), ...)` removed entirely.
+  - `AuthController::login()` now calls `UserService::recordLogin()` instead of touching the `User` model directly.
+
+  ### Build rules introduced
+
+  - Models must never call `Clock`. All Clock calls live in Services; timestamps are passed down as explicit `string` parameters.
+  - Models must not contain allowlists, field filtering, null-coercion, rate-limit comparisons, hash verification, or name derivation — these belong in Services.
+  - SQL `NOW()`/`DATE_SUB(NOW(), ...)` must not appear in any model or service query.
+</Update>
+
+<Update label="8 June 2026" description="v1.3.1" tags={["Fix", "Users"]}>
+  ## Routing fix and last-login tracking
+
+  A small fix release. A routing line was missing from bootstrap, meaning URL requests to the public route (`index.php`) weren't resolving correctly. This release also adds last-login tracking to the `users` table, in preparation for the User Management Dashboard.
+
+  ### Added
+
+  - `User::updateLastAccessed()` — records the time and date of a user's last successful login.
+  - `schema.sql` — `users` table gains an `accessed_at` column.
+
+  ### Fixed
+
+  - Missing `bootstrap.php` routing line for the public route.
+  - `schema.sql` — removed extraneous fields that had been added to core system tables in error.
+</Update>
+
+<Update label="6 June 2026" description="v1.3.0" tags={["Core", "Date/time", "Migration"]}>
   ## Formal date and time handling
 
   FrankPHP 1.3.0 introduces the framework's first formal date/time handling standard:
 
   > UTC at rest. Local at the edges.
 
-  The headline addition is `App\Core\Clock`, a small framework-owned utility for UTC timestamp generation, UTC/local conversion, timezone validation, timezone resolution, and local-date query boundary calculation.
+  The headline addition is `Frank\Core\Clock`, a small framework-owned utility for UTC timestamp generation, UTC/local conversion, timezone validation, timezone resolution, and local-date query boundary calculation.
 
   This release is primarily a framework hygiene and portability release. It reduces the risk of timezone drift between applications, servers, databases, and users.
 
@@ -52,7 +155,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
 
   ### Build rules introduced
 
-  - Use `App\Core\Clock` for persisted timestamp generation.
+  - Use `Frank\Core\Clock` for persisted timestamp generation.
   - Store exact instants as UTC `DATETIME`.
   - Use `DATE` for date-only values with no time-of-day meaning.
   - Do not use SQL `NOW()` or `CURRENT_TIMESTAMP` for application-managed timestamps.

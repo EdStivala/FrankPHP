@@ -1,26 +1,13 @@
 ---
 title: "Version Management"
-description: "Track framework changes, generate a release manifest, and package clean Gumroad zips without adding dependencies or build pipelines."
+description: "Track framework changes, generate a release manifest, and package a clean framework-only zip for GitHub Releases, without adding dependencies or build pipelines."
 ---
 
 # Version Management
 
-FrankPHP now includes a lightweight version management workflow designed for the way the framework is actually shipped: as a simple Zip download rather than through GitHub, Composer packages, or a deployment pipeline.
+FrankPHP includes a lightweight version management workflow designed for the way the framework is actually shipped: through GitHub Releases, with `framework/` versioned and packaged independently from `app/`.
 
 This feature gives you a basic form of release management inside the framework itself. It stays true to the FrankPHP approach: **no dependencies, no complex pipelines, no external release tooling**. Just plain PHP scripts, a few predictable files, and a repeatable workflow you can follow every time you prepare a release.
-
----
-
-## What it does
-
-The version management feature gives you four practical things:
-
-1. A single source of truth for the current version
-2. A structured release manifest that records what changed
-3. A snapshot-based diff system so future releases can be compared properly
-4. A clean packaging workflow for building a release Zip without leaking local-only files
-
-In practice, that means you can move from “I think I changed a few files” to “I know what changed, what version this is, and what should go into the Gumroad Zip.”
 
 <Note>
 This is not intended to be enterprise release engineering. It is a simple, durable release workflow for a lightweight PHP framework.
@@ -28,27 +15,46 @@ This is not intended to be enterprise release engineering. It is a simple, durab
 
 ---
 
+## What it does
+
+The version management feature gives you four practical things:
+
+1. A single source of truth for the current `framework/` version
+2. A structured release manifest that records what changed
+3. A snapshot-based diff system so future releases can be compared properly
+4. A clean packaging workflow for building a framework-only release zip without leaking local-only files
+
+In practice, that means you can move from “I think I changed a few files” to “I know what changed, what version this is, and what should go into the framework-only zip attached to the GitHub Release.”
+
+<Note>
+This feature only versions `framework/`. `app/` is never touched by a framework update, so it has no `VERSION`, `CHANGELOG.md`, or release tooling of its own — it's just your own application code, tracked however you already track your project.
+</Note>
+
+---
+
 ## The files this feature adds
 
-### `VERSION`
+All of the files below live inside `framework/`, not at the project root.
 
-A plain text file containing the current version number only.
+### `framework/VERSION`
+
+A plain text file containing the current framework version number only.
 
 Example:
 
 ```txt
-1.1.0
+2.0.0
 ```
 
 This is the single source of truth for the framework version. Both the release manifest generator and the release build process read from this file.
 
-### `CHANGELOG.md`
+### `framework/CHANGELOG.md`
 
-A human-readable summary of what was added, changed, and fixed in each release.
+A human-readable summary of what was added, changed, and fixed in each framework release.
 
 This is the file you update for yourself, your customers, and your future documentation. It explains the release in normal language.
 
-### `RELEASE_MANIFEST.json`
+### `framework/RELEASE_MANIFEST.json`
 
 A structured, AI-friendly release record.
 
@@ -67,33 +73,37 @@ It typically includes:
 - `breaking_changes`
 - `ai_notes`
 
-### `tools/generate_release_manifest.php`
+### `framework/tools/generate_release_manifest.php`
 
 This script creates a draft `RELEASE_MANIFEST.json` and stores a snapshot of the current release so the next release has something concrete to compare against.
 
 It works by:
 
-- reading the current version from `VERSION`
-- scanning the project files
+- reading the current version from `framework/VERSION`
+- scanning the framework project files
 - comparing them with the previous release snapshot
-- extracting route changes from `bootstrap.php`
-- extracting basic schema signals from `sql/schema.sql`
+- extracting route changes from `framework/bootstrap.php`
+- extracting basic schema signals from `framework/sql/schema.core.sql`
 - writing a new draft `RELEASE_MANIFEST.json`
-- storing release snapshot data under `releases/{version}/`
+- storing release snapshot data under `framework/releases/{version}/`
 
-### `releases/{version}/`
+### `framework/releases/{version}/`
 
 This folder stores the internal snapshot for each release.
 
 It exists so FrankPHP can compare the current state of the framework against the last known release. That is what makes the generated manifest more useful over time.
 
-This folder is for your internal release process. It should normally **not** be included in the customer Zip.
+This folder is for your internal release process. It is excluded from the framework-only release zip.
 
-### `tools/build_release.php`
+### `framework/tools/build_release.php`
 
-This script builds a clean distributable release folder and Zip.
+This script builds a clean, **framework-only** distributable folder and zip — it packages `framework/` alone, not `app/`.
 
-It creates a `dist/` build using exclusion rules so local-only files such as `.env`, internal release snapshots, editor files, and tooling directories do not accidentally end up in the customer package.
+It creates a `dist/` build using exclusion rules so local-only files such as internal release snapshots, editor files, and tooling directories do not accidentally end up in the packaged zip.
+
+<Note>
+Because the build is framework-only, it's meant to be attached to a GitHub Release as an **update asset** for existing installs — not used as the artifact a new customer downloads. A new install just uses the repo's own "Source code" zip/tarball, which GitHub generates automatically for every release and already contains both `framework/` and `app/`.
+</Note>
 
 ---
 
@@ -106,16 +116,16 @@ This release system follows the same principle.
 - No Composer packages
 - No Node tooling
 - No CI/CD requirement
-- No GitHub dependency
 - No release SaaS
-- No “pipeline” you need to understand before you can ship a Zip
+- No “pipeline” you need to understand before you can ship a release
 
 Instead, the release workflow is just:
 
 - update the version
 - generate the manifest
 - review the outputs
-- build the release Zip
+- build the framework-only zip
+- publish a GitHub Release and attach it
 
 That is enough structure to make releases safer and more repeatable, without turning the framework into something heavier than it needs to be.
 
@@ -123,16 +133,16 @@ That is enough structure to make releases safer and more repeatable, without tur
 
 ## How to use it
 
-This is the workflow to follow every time you prepare a release.
+This is the workflow to follow every time you prepare a `framework/` release.
 
-## Step 1: Update `VERSION`
+## Step 1: Update `framework/VERSION`
 
-Open the `VERSION` file and change it to the new release number.
+Open the `VERSION` file inside `framework/` and change it to the new release number.
 
 Example:
 
 ```txt
-1.1.0
+2.0.0
 ```
 
 <Warning>
@@ -143,7 +153,7 @@ The `VERSION` file must be saved as **plain text** and contain only the version 
 
 ## Step 2: Generate the release manifest
 
-Run:
+From inside `framework/`, run:
 
 ```bash
 php tools/generate_release_manifest.php
@@ -153,7 +163,7 @@ This will:
 
 - create or update `RELEASE_MANIFEST.json`
 - store a snapshot under `releases/{version}/`
-- compare the current codebase to the previous release snapshot when one exists
+- compare the current framework codebase to the previous release snapshot when one exists
 
 ### First run behaviour
 
@@ -185,7 +195,7 @@ The machine should record the facts. You should provide the meaning.
 
 ---
 
-## Step 4: Update `CHANGELOG.md`
+## Step 4: Update `framework/CHANGELOG.md`
 
 Add the new release entry in plain language.
 
@@ -193,34 +203,33 @@ This is the human-readable record of the release.
 
 ---
 
-## Step 5: Keep `CODEBASE.md` in sync
+## Step 5: Keep `framework/codebase.md` in sync
 
-If the framework conventions, workflow, or release process changed, update `CODEBASE.md` so future AI pair-coding sessions have an accurate framework-level reference.
+If the framework conventions, workflow, or release process changed, update `framework/codebase.md` so future AI pair-coding sessions have an accurate framework-level reference.
 
 This is particularly useful when the change is architectural rather than just functional.
 
 ---
 
-## Step 6: Build the release Zip
+## Step 6: Build the framework-only zip
 
-Run:
+From inside `framework/`, run:
 
 ```bash
 php tools/build_release.php
 ```
 
-This creates a clean release under `dist/` and then builds the Zip.
+This creates a clean release under `dist/` and then builds the zip — `framework/` only, `app/` is never included.
 
 Typical output:
 
 ```text
-/dist/frankphp-1.1.0/
-/dist/frankphp-1.1.0.zip
+/dist/frankphp-2.0.0/
+/dist/frankphp-2.0.0.zip
 ```
 
 The build script excludes local-only and internal files such as:
 
-- `.env`
 - `releases/`
 - `tools/`
 - editor junk files
@@ -228,19 +237,29 @@ The build script excludes local-only and internal files such as:
 
 ---
 
-## Step 7: Inspect the built Zip
+## Step 7: Publish a GitHub Release and attach the zip
 
-Before uploading to Gumroad, confirm the Zip contains what you expect.
+Create a new GitHub Release for the tag/version you're shipping.
+
+GitHub automatically generates and attaches its own **Source code (zip)** and **Source code (tar.gz)** assets to every release — these contain the full repo, `framework/` and `app/` together, and are what a brand new install downloads.
+
+Manually attach the `dist/frankphp-2.0.0.zip` file you just built as an **additional release asset**. This is the framework-only artifact existing installs download to update — replace their `framework/` folder with it and leave `app/` untouched.
+
+---
+
+## Step 8: Inspect the built zip
+
+Before attaching it to the release, confirm the zip contains what you expect.
 
 At minimum, check that it includes the framework itself plus your release metadata files:
 
 - `VERSION`
 - `CHANGELOG.md`
-- `CODEBASE.md`
+- `codebase.md`
 - `RELEASE_MANIFEST.json`
 
 <Check>
-If the Zip contains only release-safe files and no local credentials, the build is ready to upload.
+If the zip contains only release-safe files, no `app/` content, and no local credentials, the build is ready to attach to the release.
 </Check>
 
 ---
@@ -274,14 +293,15 @@ The generated manifest reduces the chance of missing something, but there are st
 
 If you will forget this later, follow this exact order:
 
-1. Change `VERSION`
+1. Change `framework/VERSION`
 2. Run `php tools/generate_release_manifest.php`
 3. Review and edit `RELEASE_MANIFEST.json`
-4. Update `CHANGELOG.md`
-5. Update `CODEBASE.md` if framework conventions changed
+4. Update `framework/CHANGELOG.md`
+5. Update `framework/codebase.md` if framework conventions changed
 6. Run `php tools/build_release.php`
-7. Inspect `dist/{product}-{version}.zip`
-8. Upload the Zip to Gumroad
+7. Publish a GitHub Release — GitHub auto-attaches the Source code zip/tarball
+8. Attach `dist/frankphp-{version}.zip` as an additional release asset
+9. Inspect both before considering the release final
 
 That is the whole workflow.
 
@@ -296,6 +316,6 @@ If you stick to the workflow above, FrankPHP gives you a simple built-in release
 - a real version number
 - a record of what changed
 - basic release history
-- a clean packaging step
+- a clean, framework-only packaging step
 
 All without dependencies, external services, or a complex toolchain.

@@ -5,7 +5,7 @@ description: "Plan FrankPHP upgrades safely by separating release revisions, fre
 
 # Revisions and Migrations
 
-FrankPHP is intentionally simple to ship: a versioned Zip, a small set of framework files, and clear context files that explain how the framework behaves.
+FrankPHP is intentionally simple to ship: a versioned `framework/` folder, a small set of framework files, and clear context files that explain how the framework behaves.
 
 That simplicity does **not** mean every upgrade should be treated as a file overwrite.
 
@@ -37,12 +37,12 @@ A revision is the complete framework state for a released version.
 
 For FrankPHP, that normally includes:
 
-- `VERSION`
-- `CHANGELOG.md`
-- `CODEBASE.md`
-- `RELEASE_MANIFEST.json`
+- `framework/VERSION`
+- `framework/CHANGELOG.md`
+- `framework/codebase.md`
+- `framework/RELEASE_MANIFEST.json`
 - framework-owned PHP files
-- `sql/schema.sql`
+- `framework/sql/schema.core.sql`
 - any migration scripts for existing installs
 - updated documentation
 
@@ -68,10 +68,10 @@ Use this decision table:
 
 | Situation | Use |
 |---|---|
-| Starting a brand new FrankPHP project | latest framework Zip and fresh `sql/schema.sql` |
-| Upgrading an existing app | release notes plus the version-specific migration script |
-| Comparing framework behaviour | `CHANGELOG.md`, `CODEBASE.md`, and `RELEASE_MANIFEST.json` |
-| Updating AI context for future coding sessions | latest `CODEBASE.md` plus the app's current `MYAPP.md` |
+| Starting a brand new FrankPHP project | the latest release's Source code zip/tarball (bundles `framework/` + `app/`) and a fresh `framework/sql/schema.core.sql` |
+| Upgrading an existing app | release notes plus the version-specific migration script, applied against `framework/` only |
+| Comparing framework behaviour | `framework/CHANGELOG.md`, `framework/codebase.md`, and `framework/RELEASE_MANIFEST.json` |
+| Updating AI context for future coding sessions | latest `framework/codebase.md` plus the app's current `MYAPP.md` |
 
 ---
 
@@ -81,7 +81,7 @@ FrankPHP v1.3.0 introduced the framework's first formal date/time standard:
 
 > UTC at rest. Local at the edges.
 
-It also introduced `App\Core\Clock`, the framework-owned utility for UTC timestamp generation, timezone resolution, UTC/local conversion, and local-date query boundary calculation.
+It also introduced `Frank\Core\Clock`, the framework-owned utility for UTC timestamp generation, timezone resolution, UTC/local conversion, and local-date query boundary calculation.
 
 That change affects both new installs and existing applications.
 
@@ -91,13 +91,23 @@ For an existing install, the migration needs to inspect the current schema, guar
 
 ---
 
+## The v2.0.0 example
+
+FrankPHP v2.0.0 applies the same revision-versus-migration thinking one level up, at the folder itself: the single project folder became two siblings, `framework/` (replaced wholesale on every update) and `app/` (never touched by an update, ever).
+
+That's the revision/migration split taken to its logical conclusion — instead of a script deciding, file by file, what's safe to overwrite, the framework/application ownership boundary makes it structurally impossible to overwrite application code by accident. Everything framework-owned lives in `framework/`; everything you own lives in `app/`.
+
+One consequence worth knowing about if you're migrating an older single-folder FrankPHP install to v2.0.0: your own tables that extend `tenants`/`users` (satellite tables, per `codebase.md` §16.7) now have a supported first-boot schema mechanism of their own — `app/sql/schema.app.sql`, run via the same `Database::runSchemaFileIfMissingTable()` primitive the framework uses for its own schema, guarded by a sentinel table you choose. That's a new, application-owned equivalent to what `framework/sql/schema.core.sql` does for the framework's own tables.
+
+---
+
 ## Recommended upgrade workflow
 
 Follow this workflow for each FrankPHP release.
 
 ## Step 1: Read the changelog entry
 
-Start with `CHANGELOG.md`.
+Start with `framework/CHANGELOG.md`.
 
 Look specifically for:
 
@@ -107,7 +117,7 @@ Look specifically for:
 - migration notes
 - build rules introduced for AI-assisted development
 
-For v1.3.0, the important rule is that persisted timestamps should be generated in UTC through `App\Core\Clock`, while local timezones are used only at input, output, and query-boundary edges.
+For v1.3.0, the important rule is that persisted timestamps should be generated in UTC through `Frank\Core\Clock`, while local timezones are used only at input, output, and query-boundary edges.
 
 ---
 
@@ -119,11 +129,11 @@ Ask what kind of release this is.
 |---|---|
 | Documentation-only | docs, examples, context files |
 | Framework behaviour | controllers, services, middleware, core utilities |
-| Schema-affecting | `sql/schema.sql`, framework tables, indexes |
+| Schema-affecting | `framework/sql/schema.core.sql`, framework tables, indexes |
 | Data-affecting | existing values must be transformed, normalised, or reviewed |
-| Application-contract affecting | `CODEBASE.md` rules that AI agents must now follow |
+| Application-contract affecting | `framework/codebase.md` rules that AI agents must now follow |
 
-v1.3.0 is a framework hygiene release, but it is also schema- and data-relevant because it formalises timestamp storage expectations and migration handling for MySQL timestamp columns.
+v1.3.0 is a framework hygiene release, but it is also schema- and data-relevant because it formalises timestamp storage expectations and migration handling for MySQL timestamp columns. v2.0.0 is application-contract affecting in a much larger way — the framework/application ownership boundary itself changed.
 
 ---
 
@@ -133,16 +143,16 @@ Framework-owned files should be updated as a versioned framework upgrade, not mi
 
 Typical framework-owned files include:
 
-- `Core/Clock.php`
-- framework models such as `Models/User.php` and `Models/Tenant.php`
-- framework auth/signup services
-- `bootstrap.php`
-- `sql/schema.sql`
-- `CODEBASE.md`
-- `CHANGELOG.md`
+- `framework/Core/Clock.php`
+- framework models such as `framework/Models/User.php` and `framework/Models/Tenant.php`
+- framework auth/signup services under `framework/Services/`
+- `framework/bootstrap.php`
+- `framework/sql/schema.core.sql`
+- `framework/codebase.md`
+- `framework/CHANGELOG.md`
 
 <Note>
-FrankPHP deliberately separates framework-owned files from application-owned files. Application features should continue to be documented in `MYAPP.md`; framework conventions belong in `CODEBASE.md`.
+FrankPHP deliberately separates framework-owned files from application-owned files. Application features should continue to be documented in `MYAPP.md`; framework conventions belong in `framework/codebase.md`. `app/bootstrap.php` is a separate file that is never touched by a framework update — your own routes and container bindings live there, and changes to it are application work, not framework work.
 </Note>
 
 ---
@@ -227,7 +237,7 @@ NOW()
 CURRENT_TIMESTAMP
 ```
 
-Then replace persisted timestamp generation, local-date filters, and display formatting with `App\Core\Clock` patterns.
+Then replace persisted timestamp generation, local-date filters, and display formatting with `Frank\Core\Clock` patterns.
 
 The goal is not to make every line of date code look identical. The goal is to make the responsibility boundary consistent:
 
@@ -270,9 +280,9 @@ A good FrankPHP release folder should leave you with enough information to answe
 
 For v1.3.0, keep:
 
-- the release Zip
-- `CHANGELOG.md`
-- `CODEBASE.md`
+- the release package (the framework-only zip you updated with, or the full source archive if it was a fresh install)
+- `framework/CHANGELOG.md`
+- `framework/codebase.md`
 - the fresh-install schema
 - `migration_v_1.3.0.sql`
 - notes from any project-specific timestamp correction
@@ -306,4 +316,4 @@ Use this as the short version before upgrading an existing app.
 
 FrankPHP upgrades should stay simple, but they should not be casual.
 
-The safest approach is to keep the framework revision, fresh-install schema, and existing-install migration path separate. That lets FrankPHP stay lightweight while still protecting real application data as the platform evolves.
+The safest approach is to keep the framework revision, fresh-install schema, and existing-install migration path separate. That lets FrankPHP stay lightweight while still protecting real application data as the platform evolves. Since v2.0.0, the `framework/`/`app/` split enforces the most important half of that separation structurally, before a single migration script is even involved.

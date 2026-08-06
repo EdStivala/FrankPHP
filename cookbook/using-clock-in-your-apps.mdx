@@ -1,11 +1,11 @@
 ---
 title: "Using Clock in Your Apps"
-description: "A practical cookbook for handling dates, times, timezones, and UTC storage with App\\Core\\Clock in FrankPHP v1.3.0."
+description: "A practical cookbook for handling dates, times, timezones, and UTC storage with Frank\\Core\\Clock in FrankPHP."
 ---
 
 # Using Clock in Your Apps
 
-FrankPHP v1.3.0 adds `App\Core\Clock`, a small framework-owned utility that gives every application the same date/time contract:
+FrankPHP v1.3.0 added `Frank\Core\Clock`, a small framework-owned utility that gives every application the same date/time contract:
 
 > UTC at rest. Local at the edges.
 
@@ -40,7 +40,7 @@ Labels such as `Today`, `Yesterday`, `Never`, `Overdue`, `Recently active`, or `
 Use `Clock` wherever application code needs to create, convert, or prepare date/time values.
 
 ```php
-use App\Core\Clock;
+use Frank\Core\Clock;
 ```
 
 `Clock` is a stateless static utility. It does not need a container binding.
@@ -81,7 +81,7 @@ Do not let `Clock` read from `$_SESSION`, middleware globals, request globals, o
 Use this when inserting or updating application-managed timestamp columns.
 
 ```php
-use App\Core\Clock;
+use Frank\Core\Clock;
 
 $createdAt = Clock::nowUtcString();
 $updatedAt = Clock::nowUtcString();
@@ -314,8 +314,8 @@ This is the preferred FrankPHP pattern.
 The Service handles business logic and display preparation. The Controller passes the result to the view. The view renders only.
 
 ```php
-use App\Core\Clock;
-use App\Services\ServiceResult;
+use Frank\Core\Clock;
+use Frank\Services\ServiceResult;
 
 class BookingService
 {
@@ -359,7 +359,7 @@ Some applications may already have local helpers such as `utcNow()`.
 During migration, keep the call sites stable and delegate the helper to `Clock` temporarily.
 
 ```php
-use App\Core\Clock;
+use Frank\Core\Clock;
 
 private function utcNow(): string
 {
@@ -390,7 +390,7 @@ This keeps the migration safe and visible.
 
 When building or reviewing FrankPHP code, apply these rules:
 
-- Use `App\Core\Clock` for persisted timestamp generation.
+- Use `Frank\Core\Clock` for persisted timestamp generation.
 - Store exact instants as UTC `DATETIME`.
 - Use `DATE` for date-only values.
 - Do not use SQL `NOW()` or `CURRENT_TIMESTAMP` for application-managed timestamps.

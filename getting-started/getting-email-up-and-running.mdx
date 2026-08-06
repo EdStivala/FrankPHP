@@ -26,7 +26,7 @@ Before writing config values, it's essential to understand how FrankPHP routes c
 
 ## Step 2: Configure Your Environment Credentials
 
-Open your root `.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
+Open your `app/.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
 
 ```php
 # ---------------------------------------------------------------
@@ -56,7 +56,7 @@ MAIL_SITE_ADMIN=admin@yourdomain.com
 
 ## Step 3: Test a Native Framework Flow (Password Reset)
 
-Now that your credentials live securely in `.env`, the framework's single SMTP gateway (`EmailService`) will automatically inject them when spawned by the Dependency Injection Container.
+Now that your credentials live securely in `app/.env`, the framework's single SMTP gateway (`Frank\Services\Email\EmailService`) will automatically inject them when spawned by the Dependency Injection Container.
 
 Let’s verify it works by unlocking the **Forgot My Password** workflow:
 
@@ -71,57 +71,156 @@ Let’s verify it works by unlocking the **Forgot My Password** workflow:
 
 FrankPHP avoids complex, bloated templating engines. Following the framework philosophy of *"explicit over magic,"* email layouts are constructed dynamically using standard PHP objects.
 
-Every convenience method inside `EmailService` maps business inputs to an underlying `EmailMessage` value object. If you want to change the visual design of an existing template, you can alter the template wrappers inside the `App\Services\Email` subdirectory.
+`EmailService` triggers three framework-owned flows directly — signup verification, password reset, and the platform-owner signup alert — each rendered by a default template class shipped inside `framework/Services/Email/Templates/`.
 
-For example, a password reset template builds its layout using explicit markup structures:
+<Warning>
+**Never edit those template files directly.** They live inside `framework/`, so any change you make there is silently lost the next time you update the framework. Override the template *class* instead — via config.
+</Warning>
+
+Add an entry to `mail.templates` in `app/Config/config.php`, mapping the flow you want to change to your own replacement class:
 
 ```php
-// Example of how FrankPHP constructs HTML layouts safely inside EmailService
-public function sendPasswordReset(string $email, string $name, string $resetUrl): EmailResult
-{
-    $htmlBody = "
-        &lt;div style='font-family: sans-serif; padding: 20px; color: #1f2937;'&gt;
-            &lt;h2&gt;Hello, " . htmlspecialchars($name) . "&lt;/h2&gt;
-            &lt;p&gt;We received a request to reset your password for your account.&lt;/p>
-            &lt;p&gt;&lt;a href='" . htmlspecialchars($resetUrl) . "' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;'&gt;Reset Password&lt;/a&gt;&lt;/p&gt;
-            &lt;p&gt;If you did not make this request, you can safely ignore this email.&lt;/p&gt;
-        &lt;/div&gt;
-    ";
+// app/Config/config.php
+'mail' => [
+    // ...existing keys...
+    'templates' => [
+        // 'signup_verification'         => \App\Email\Templates\MySignupVerificationTemplate::class,
+        'password_reset'                 => \App\Email\Templates\MyPasswordResetTemplate::class,
+        // 'platform_owner_signup_alert'  => \App\Email\Templates\MyPlatformOwnerAlertTemplate::class,
+    ],
+],
+```
 
-    return $this->send(new EmailMessage(
-        credentialsUserName:   $this->username,
-        credentialsUserSecret: $this->password,
-        to: $email,
-        toName: $name,
-        subject: 'Password Reset Request',
-        htmlBody: $htmlBody
-    ));
+Your override class must implement the same static methods, with the same arguments, as the framework default it replaces:
+
+| Flow key | Required static signature |
+|---|---|
+| `signup_verification` | `buildHtml(string $email, string $code, int $expiry): string` and `buildText(string $email, string $code, int $expiry): string` |
+| `password_reset` | `buildHtml(string $name, string $resetUrl): string` and `buildText(string $name, string $resetUrl): string` |
+| `platform_owner_signup_alert` | `buildHtml(string $email, string $event): string` and `buildText(string $email, string $event): string` |
+
+For example, a password reset override:
+
+```php
+// app/Email/Templates/MyPasswordResetTemplate.php
+namespace App\Email\Templates;
+
+class MyPasswordResetTemplate
+{
+    public static function buildHtml(string $name, string $resetUrl): string
+    {
+        return "
+            <div style='font-family: sans-serif; padding: 20px; color: #1f2937;'>
+                <h2>Hello, " . htmlspecialchars($name) . "</h2>
+                <p>We received a request to reset your password for your account.</p>
+                <p><a href='" . htmlspecialchars($resetUrl) . "' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;'>Reset Password</a></p>
+                <p>If you did not make this request, you can safely ignore this email.</p>
+            </div>
+        ";
+    }
+
+    public static function buildText(string $name, string $resetUrl): string
+    {
+        return "Hello {$name},\n\nReset your password: {$resetUrl}\n\nIf you did not request this, ignore this email.";
+    }
 }
 ```
 
-You are completely free to open these methods up and tweak the inline CSS tokens (`#6366f1`) to align with your personal brand palette.
+The override class can live anywhere under `App\` — it doesn't need to sit in any particular folder.
+
+<Note>
+A fresh install's `templates` map is empty, so this is entirely opt-in. Nothing needs configuring for a new project to send correct, framework-default email — you only add an entry here once you want your own wording or branding on one of the three framework flows.
+</Note>
 
 ---
 
 ## Step 5: How to Trigger an Owner-to-User Notification
 
-When building new features, you will often need to let a Tenant Owner push communications downward to their users. Following the *"delegate, don't decide"* service design pattern, your controllers should never handle email construction directly. They pass data to `EmailService`.
+When building new features, you will often need to let a Tenant Owner push communications downward to their users. `EmailService` only ships the three framework-owned flows above — for a new email type, the pattern is an **application-owned service** that builds its own message and calls `EmailService::send()` directly. Following the *"delegate, don't decide"* pattern, your controllers should never handle email construction themselves.
 
-Here is how you can explicitly call a downward communication sequence inside a custom controller action (such as inviting a new team member to a tenant):
+Here's the full pattern for a custom "invite a team member" notification.
+
+**`app/Services/NotificationService.php`**
 
 ```php
+<?php
+
+namespace App\Services;
+
+use Frank\Services\Email\EmailService;
+use Frank\Services\Email\EmailMessage;
+use Frank\Services\Email\EmailResult;
+
+class NotificationService
+{
+    public function __construct(
+        private EmailService $emailService,
+        private string $mailUsername,
+        private string $mailPassword,
+        private string $fromEmail,
+        private string $fromName
+    ) {}
+
+    public function sendUserInvite(string $email, string $name, string $inviteUrl): EmailResult
+    {
+        $htmlBody = "
+            <div style='font-family: sans-serif; padding: 20px; color: #1f2937;'>
+                <h2>You're invited</h2>
+                <p>" . htmlspecialchars($name) . " has invited you to join their team on the app.</p>
+                <p><a href='" . htmlspecialchars($inviteUrl) . "'>Accept invitation</a></p>
+            </div>
+        ";
+
+        return $this->emailService->send(new EmailMessage(
+            credentialsUserName:   $this->mailUsername,
+            credentialsUserSecret: $this->mailPassword,
+            to:       $email,
+            toName:   $name,
+            subject:  "You're invited to join the team",
+            htmlBody: $htmlBody,
+            from:     $this->fromEmail,
+            fromName: $this->fromName,
+        ));
+    }
+}
+```
+
+**In `app/bootstrap.php`:**
+
+```php
+$container->singleton(\App\Services\NotificationService::class, function ($c) use ($config) {
+    return new \App\Services\NotificationService(
+        $c->make(\Frank\Services\Email\EmailService::class),
+        $config['mail']['username'],
+        $config['mail']['password'],
+        $config['mail']['from_address'],
+        $config['mail']['from_name'],
+    );
+});
+
+$container->bind(\App\Controllers\TeamInvitationController::class, function ($c) {
+    return new \App\Controllers\TeamInvitationController(
+        $c->make(\App\Services\NotificationService::class)
+    );
+});
+```
+
+**`app/Controllers/TeamInvitationController.php`**
+
+```php
+<?php
+
 namespace App\Controllers;
 
-use App\Core\BaseController;
-use App\Core\Request;
-use App\Core\Response;
-use App\Services\Email\EmailService;
+use Frank\Core\BaseController;
+use Frank\Core\Request;
+use Frank\Core\Response;
+use App\Services\NotificationService;
 
 class TeamInvitationController extends BaseController
 {
-    // Inject EmailService straight through the constructor via bootstrap.php
     public function __construct(
-        private EmailService $emailService
+        private NotificationService $notificationService
     ) {}
 
     public function sendInvite(Request $request, array $params): mixed
@@ -131,8 +230,8 @@ class TeamInvitationController extends BaseController
         $targetName  = $request->input('name');
         $inviteUrl   = "https://app.yoursite.com/signup?invite=token123";
 
-        // 2. Instruct the service gateway to deliver the payload
-        $result = $this->emailService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
+        // 2. Instruct your own notification service to build and dispatch the email
+        $result = $this->notificationService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
 
         if ($result->success) {
             return Response::redirect("/tenant/{$request->tenant['id']}/team?success=invited");
@@ -140,7 +239,7 @@ class TeamInvitationController extends BaseController
 
         // 3. Gracefully return execution errors to the view layer
         return $this->view('team/invite', [
-            'error' => 'Could not send invitation: ' . $result->message
+            'error' => 'Could not send invitation: ' . $result->error
         ]);
     }
 }
@@ -152,10 +251,11 @@ class TeamInvitationController extends BaseController
 
 Every time FrankPHP distributes an email:
 
-1. **Context Handoff:** The controller receives an interactive action context and passes raw business targets to the injected `EmailService` dependency.
-2. **Environment Assembly:** `EmailService` processes the request using values compiled from your secure `.env` file during the initial bootstrap timeline.
-3. **Encapsulation & Dispatch:** The internal service encapsulates metadata securely into an immutable `EmailMessage` object, which is dispatched via SMTP.
-4. **Upstream Response:** An `EmailResult` envelope returns upstream—providing the invoking controller explicit confirmation of delivery success or a clean, diagnostic error string on failure.
+1. **Context Handoff:** The controller receives an interactive action context and passes raw business targets to your injected application-owned service (here, `NotificationService`).
+2. **Message Construction:** Your service builds an `EmailMessage` value object and hands it to the framework's `EmailService::send()` — the one place in the application that knows how to actually dispatch mail.
+3. **Environment Assembly:** `EmailService` processes the request using values compiled from your secure `app/.env` file during the initial bootstrap timeline.
+4. **Encapsulation & Dispatch:** The internal service encapsulates metadata securely into the immutable `EmailMessage` object, which is dispatched via SMTP.
+5. **Upstream Response:** An `EmailResult` envelope returns upstream—providing the invoking controller explicit confirmation of delivery success or a clean, diagnostic error string on failure.
 
 No magic background queues to stall out on shared hosting. Complete visibility, fast, and completely traceable.
 

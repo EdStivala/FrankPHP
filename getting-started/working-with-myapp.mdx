@@ -7,8 +7,8 @@ description: "MYAPP.md is the living record of your application. Learn how to ke
 
 Every FrankPHP project includes two files that together give any AI agent — or any new developer — complete, accurate context for your application:
 
-- **`CODEBASE.md`** describes the framework. It is versioned with FrankPHP and you do not edit it.
-- **`MYAPP.md`** describes your application. You own it, and it needs to stay current.
+- **`codebase.md`**, inside `framework/`, describes the framework. It is versioned with FrankPHP and you do not edit it.
+- **`MYAPP.md`**, inside `app/`, describes your application. You own it, and it needs to stay current.
 
 This page explains what MYAPP.md contains, why it matters, and exactly how to keep it updated depending on how you're working.
 
@@ -24,7 +24,7 @@ MYAPP.md is a structured record of everything your application adds on top of th
 - Business rules that aren't obvious from reading the code
 - Any intentional deviations from standard FrankPHP patterns
 
-It does **not** contain framework information. The `users`, `tenants`, and `password_reset_tokens` tables, the auth routes, and the middleware stack are all documented in `CODEBASE.md` — you do not need to repeat them in MYAPP.md.
+It does **not** contain framework information. The `users`, `tenants`, `password_reset_tokens`, and `signup_tokens` tables, the auth routes, and the middleware stack are all documented in `framework/codebase.md` — you do not need to repeat them in MYAPP.md.
 
 <Note>
 Think of MYAPP.md as the one document a new developer — or a new AI session — would need to understand your specific application without reading every source file.
@@ -56,7 +56,7 @@ You don't need to do anything separately. If the agent produces code without upd
 
 ### Working with a chat interface (pasting into Claude, ChatGPT, etc.)
 
-At the start of every session, paste both `CODEBASE.md` and `MYAPP.md` into the conversation. The AI has full context from that point forward.
+At the start of every session, paste both `framework/codebase.md` and `MYAPP.md` into the conversation. The AI has full context from that point forward.
 
 After the AI produces feature code, it will also produce a clearly labelled **MYAPP.md patch** — the exact lines to add, replace, or remove, with enough surrounding context to locate the right position in the file. Apply the patch before your next session.
 
@@ -121,6 +121,6 @@ Add a glossary entry whenever you use a term that has a specific meaning in your
 
 ## Next steps
 
-- [AI Context Briefing](/features/ai-context-briefing) — how CODEBASE.md and MYAPP.md work together and why the separation matters
+- [AI Context Briefing](/features/ai-context-briefing) — how `framework/codebase.md` and `MYAPP.md` work together and why the separation matters
 - [Get FrankPHP Running](/getting-started/get-frankphp-running-rewritten) — if you haven't set up your project yet
 - [Environment Configuration](/architecture/environment-configuration) — managing credentials and config across environments

@@ -36,9 +36,9 @@ A dependency injection container solves this cleanly: services are constructed o
 
 ## What the container actually is
 
-The FrankPHP container is a single file: `Core/Container.php`.
+The FrankPHP container is a single file: `framework/Core/Container.php`.
 
-It is around sixty lines of plain PHP. It has four methods. There is no reflection, no attribute scanning, no class map generation, no compiled cache. You can read the entire file in two minutes and understand exactly how it works.
+It is around sixty lines of plain PHP. It has five methods. There is no reflection, no attribute scanning, no class map generation, no compiled cache. You can read the entire file in two minutes and understand exactly how it works.
 
 ```php
 $container->singleton(ServiceName::class, function ($c) {
@@ -50,6 +50,10 @@ $container->make(ServiceName::class); // returns the built instance
 
 That is the entire API for the common case.
 
+<Note>
+`singleton()` and `bind()` now throw if the id you're registering is already bound — one framework component can no longer silently shadow another. `override(id, factory, shared = true)` is the one deliberate way to replace an existing binding on purpose. See "Deliberately replacing a binding" below.
+</Note>
+
 ---
 
 ## How it is different from Laravel or Symfony
@@ -58,18 +62,18 @@ In Laravel and Symfony, the container inspects your constructor type hints using
 
 That approach is convenient. It is also opaque. When something goes wrong, you have to understand a resolution chain that runs behind the scenes. When an AI agent is helping you build features, it has to infer the binding behaviour rather than read it.
 
-FrankPHP takes a different position. Every binding is a plain PHP closure written explicitly in `bootstrap.php`. Nothing is inferred. Nothing is implicit. If you want to know what `PasswordResetService` is built with, you look at `bootstrap.php` and you can see it:
+FrankPHP takes a different position. Every binding is a plain PHP closure written explicitly in `bootstrap.php`. Nothing is inferred. Nothing is implicit. `PasswordResetService` is framework-owned, so its binding lives in `framework/bootstrap.php` — if you want to know what it's built with, that's where you look:
 
 ```php
-$container->singleton(\App\Services\PasswordResetService::class, function ($c) {
-    return new \App\Services\PasswordResetService(
-        userModel:    new \App\Models\User(),
-        emailService: $c->make(\App\Services\Email\EmailService::class),
+$container->singleton(\Frank\Services\PasswordResetService::class, function ($c) {
+    return new \Frank\Services\PasswordResetService(
+        userModel:    new \Frank\Models\User(),
+        emailService: $c->make(\Frank\Services\Email\EmailService::class),
     );
 });
 ```
 
-This is not a shortcut. This is the same explicit code you would have written inside the controller method anyway — just moved to the one place where it belongs.
+This is not a shortcut. This is the same explicit code you would have written inside the controller method anyway — just moved to the one place where it belongs. It's also not a file you should edit as part of application feature work — see [AI Context Briefing](/features/ai-context-briefing) on the framework/application ownership boundary. Your own application bindings follow the identical pattern, just registered in `app/bootstrap.php` instead — see "Extending the container for your own application" below.
 
 The result is a framework that now has a proper service wiring layer, aligned with how every major PHP framework handles this problem, while remaining completely transparent about what it is doing.
 
@@ -77,20 +81,32 @@ The result is a framework that now has a proper service wiring layer, aligned wi
 
 ## How the container fits into the request lifecycle
 
-The container is created in `bootstrap.php` after config is loaded. It is handed to the Router. When a request comes in, the Router checks whether the matched controller has a binding in the container. If it does, the container builds it. If it does not, the Router falls back to `new ControllerName()` as before.
+The container is created inside `framework/bootstrap.php`, after config is loaded, and is handed to the Router. `framework/bootstrap.php` registers every framework-owned binding, then hard-requires `app/bootstrap.php` as its final step — which is where your own application bindings are registered, using the same `$container` and `$router` already in scope.
+
+When a request comes in, the Router checks whether the matched controller has a binding in the container. If it does, the container builds it. If it does not, the Router falls back to `new ControllerName()` as before.
 
 ```
-bootstrap.php
-  └── Env::load()
-  └── config.php
-  └── Database::connect()
-  └── new Container()
-        └── singleton: EmailService     ← built once from config, shared
-        └── singleton: PasswordResetService  ← gets the EmailService
-        └── singleton: SignupService         ← gets the EmailService
-        └── bind: AuthController    ← gets the PasswordResetService
-        └── bind: SignupController  ← gets the SignupService
-  └── new Router($container)
+app/public/index.php
+  └── requires framework/bootstrap.php
+        └── Env::load()
+        └── app/Config/config.php
+        └── Database::connect()
+        └── new Container()
+              └── singleton: EmailService              ← built once from config, shared
+              └── singleton: PasswordResetService       ← gets the EmailService
+              └── singleton: SignupService              ← gets the EmailService
+              └── singleton: UserService                ← gets the User model
+              └── singleton: TenantService               ← gets the Tenant model
+              └── singleton: UserManagementService       ← gets the User model
+              └── bind: AuthController           ← gets PasswordResetService + UserService
+              └── bind: SignupController         ← gets SignupService
+              └── bind: UserManagementController ← gets UserManagementService + $config
+        └── new Router($container)
+        └── framework routes registered
+        └── hard-requires app/bootstrap.php
+              └── registers your application's own container bindings and routes
+              └── returns $router
+  └── $router->dispatch(new Request())
         └── request arrives
         └── Router checks: container->has(ControllerName)?
               YES → container->make(ControllerName)
@@ -103,23 +119,43 @@ Controllers that have no constructor dependencies — which is most of them — 
 
 ## The framework services
 
-Three services are registered in the container by the framework and should not need to be modified as part of application feature work.
+Six services are registered in the container by `framework/bootstrap.php` and should not need to be modified as part of application feature work.
 
 **`EmailService`** is registered as a singleton. It is built once from `$config['mail']` and is the only place in the application that knows about SMTP credentials. Every service that needs to send email receives this single instance.
 
 **`PasswordResetService`** is registered as a singleton. It depends on `EmailService` and the `User` model.
 
-**`SignupService`** is registered as a singleton. It depends on `EmailService` and a database connection.
+**`SignupService`** is registered as a singleton. It depends on `EmailService` and the `User` model.
+
+**`UserService`** is registered as a singleton. It depends on the `User` model — owns business logic for the user record (`recordLogin()`, `saveSettings()`).
+
+**`TenantService`** is registered as a singleton. It depends on the `Tenant` model — owns business logic for the tenant record (`saveSettings()`).
+
+**`UserManagementService`** is registered as a singleton. It depends on the `User` model — provides the data payload for the admin/owner user management dashboard.
 
 <Note>
-EmailService, PasswordResetService, and SignupService are framework-owned. They are documented in CODEBASE.md Section 15.4. Do not modify these bindings as part of application feature work — if you need to change framework behaviour, that is a deliberate upgrade decision.
+`EmailService`, `PasswordResetService`, `SignupService`, `UserService`, `TenantService`, and `UserManagementService` are framework-owned. They are documented in `codebase.md` §8.2 and §16.5. Do not modify these bindings as part of application feature work — if you need to change framework behaviour, that is a deliberate upgrade decision.
 </Note>
+
+---
+
+## Deliberately replacing a binding
+
+Because `singleton()` and `bind()` now throw on a duplicate id, you can't accidentally shadow a framework binding by registering the same class twice. If you genuinely need to replace one — say, swapping the framework's `EmailService` wiring for a variant with extra logging — use `override()` from `app/bootstrap.php`:
+
+```php
+$container->override(\Frank\Services\Email\EmailService::class, function ($c) use ($config) {
+    return new \Frank\Services\Email\EmailService(/* ...your variant... */);
+}, shared: true);
+```
+
+This is a deliberate, visible replacement rather than something that can happen by accident. `Router::override(method, pattern, handler, middleware)` follows the identical pattern for replacing a framework-registered route.
 
 ---
 
 ## Extending the container for your own application
 
-When you build a new feature that involves a service with dependencies, you register it in `bootstrap.php`. That is the only file that changes.
+When you build a new feature that involves a service with dependencies, you register it in `app/bootstrap.php`. That is the only file that changes.
 
 ### When you need to extend the container
 
@@ -136,21 +172,21 @@ You do **not** need a container binding for models. Models resolve their own dat
 
 ### Step 1: Register your service
 
-Add a `singleton()` call to the container block in `bootstrap.php`. Place it after the existing framework service registrations.
+Add a `singleton()` call to the container block in `app/bootstrap.php`. Place it after the existing application service registrations.
 
 ```php
-// In bootstrap.php — after the framework singletons
+// In app/bootstrap.php
 
 $container->singleton(\App\Services\InvoiceService::class, function ($c) use ($config) {
     return new \App\Services\InvoiceService(
-        emailService: $c->make(\App\Services\Email\EmailService::class),
-        pdo:          \App\Core\Database::getPdo(),
+        emailService: $c->make(\Frank\Services\Email\EmailService::class),
+        pdo:          \Frank\Core\Database::getPdo(),
         currency:     $config['app']['currency'] ?? 'GBP'
     );
 });
 ```
 
-The factory closure receives the container itself as `$c`. Use `$c->make(ClassName::class)` to pull in any already-registered service your new service depends on.
+The factory closure receives the container itself as `$c`. Use `$c->make(ClassName::class)` to pull in any already-registered service your new service depends on — note that `InvoiceService` is your own (`App\...`), but `EmailService` and `Database` are framework-owned (`Frank\...`) regardless of which side is doing the depending.
 
 ### Step 2: Register your controller binding (if needed)
 
@@ -173,9 +209,9 @@ $container->bind(\App\Controllers\InvoiceController::class, function ($c) {
 
 namespace App\Controllers;
 
-use App\Core\BaseController;
-use App\Core\Request;
-use App\Core\Response;
+use Frank\Core\BaseController;
+use Frank\Core\Request;
+use Frank\Core\Response;
 use App\Services\InvoiceService;
 
 class InvoiceController extends BaseController
@@ -213,7 +249,7 @@ The Router will find the controller binding you registered and build it with you
 
 Here is the full pattern for a new feature — an `InvoiceService` that sends emails and writes to the database.
 
-**`Services/InvoiceService.php`**
+**`app/Services/InvoiceService.php`**
 
 ```php
 <?php
@@ -221,7 +257,7 @@ Here is the full pattern for a new feature — an `InvoiceService` that sends em
 namespace App\Services;
 
 use PDO;
-use App\Services\Email\EmailService;
+use Frank\Services\Email\EmailService;
 
 class InvoiceService
 {
@@ -245,13 +281,13 @@ class InvoiceService
 }
 ```
 
-**In `bootstrap.php`** — added after the framework singletons:
+**In `app/bootstrap.php`** — added after the framework singletons have already been registered by `framework/bootstrap.php`:
 
 ```php
 $container->singleton(\App\Services\InvoiceService::class, function ($c) use ($config) {
     return new \App\Services\InvoiceService(
-        emailService: $c->make(\App\Services\Email\EmailService::class),
-        pdo:          \App\Core\Database::getPdo(),
+        emailService: $c->make(\Frank\Services\Email\EmailService::class),
+        pdo:          \Frank\Core\Database::getPdo(),
         currency:     $config['app']['currency'] ?? 'GBP'
     );
 });
@@ -263,43 +299,54 @@ $container->bind(\App\Controllers\InvoiceController::class, function ($c) {
 });
 ```
 
-**Result:** `EmailService` is built once from `.env`. `InvoiceService` receives it. `InvoiceController` receives `InvoiceService`. The controller method never calls `new` on anything.
+**Result:** `EmailService` is built once from `.env`, by the framework. `InvoiceService` receives it. `InvoiceController` receives `InvoiceService`. The controller method never calls `new` on anything.
 
 ---
 
 ## Sending a new type of email
 
-If your service needs to send an email type that does not already exist on `EmailService`, the right place to add it is `EmailService` itself — not inside your service.
+If your service needs to send an email type that does not already exist on `EmailService`, the right place to add it is **your own application-owned service** — not `EmailService` itself. `EmailService` is framework-owned; adding application-specific `send*()` methods to it means they're silently lost on the next framework update.
 
-Add a `send*()` method that accepts business data and builds the `EmailMessage` internally:
+Instead, write an application service (for example `App\Services\NotificationService`) that constructs its own `EmailMessage` and calls the injected `EmailService::send()` directly:
 
 ```php
-// In Services/Email/EmailService.php
+// app/Services/NotificationService.php
 
-public function sendInvoice(string $email, string $name, string $invoiceUrl): EmailResult
+namespace App\Services;
+
+use Frank\Services\Email\EmailService;
+use Frank\Services\Email\EmailMessage;
+use Frank\Services\Email\EmailResult;
+
+class NotificationService
 {
-    $htmlBody = InvoiceEmailTemplate::buildHtml($name, $invoiceUrl);
-    $textBody = InvoiceEmailTemplate::buildText($name, $invoiceUrl);
+    public function __construct(private EmailService $emailService) {}
 
-    return $this->send(new EmailMessage(
-        credentialsUserName:   $this->username,
-        credentialsUserSecret: $this->password,
-        to:                    $email,
-        toName:                $name,
-        subject:               'Your Invoice',
-        htmlBody:              $htmlBody,
-        textBody:              $textBody,
-        from:                  $this->fromEmail,
-        fromName:              $this->fromName,
-        replyTo:               $this->replyToEmail,
-    ));
+    public function sendInvoice(string $email, string $name, string $invoiceUrl): EmailResult
+    {
+        $htmlBody = InvoiceEmailTemplate::buildHtml($name, $invoiceUrl);
+        $textBody = InvoiceEmailTemplate::buildText($name, $invoiceUrl);
+
+        return $this->emailService->send(new EmailMessage(
+            credentialsUserName:   /* from injected config, not hardcoded */,
+            credentialsUserSecret: /* from injected config, not hardcoded */,
+            to:                    $email,
+            toName:                $name,
+            subject:               'Your Invoice',
+            htmlBody:              $htmlBody,
+            textBody:              $textBody,
+            from:                  /* from injected config */,
+            fromName:              /* from injected config */,
+            replyTo:               /* from injected config */,
+        ));
+    }
 }
 ```
 
-Your service calls `$this->emailService->sendInvoice(...)` and receives an `EmailResult`. It never sees credentials, SMTP configuration, or PHPMailer.
+Your controller calls `$this->notificationService->sendInvoice(...)` and receives an `EmailResult`. It never sees credentials, SMTP configuration, or PHPMailer.
 
 <Note>
-This is the rule: EmailService owns how emails are sent. Your services own what gets sent and when. Call sites pass business data only — never SMTP configuration.
+This is the rule: `EmailService` owns how emails are sent. Your own application services own what gets sent and when. Call sites pass business data only — never SMTP configuration.
 </Note>
 
 ---
@@ -313,6 +360,8 @@ Use singleton for services. They are stateless and safe to share. Building them 
 **`bind()`** — the factory is called fresh on every `make()`.
 
 Use bind for controllers. A controller can accumulate request-specific state, so a fresh instance per request is safer. In practice the difference is academic for most controllers, but it is the correct default.
+
+Both now throw if you try to register the same id twice — use `override()` if replacing an existing binding is genuinely what you mean to do.
 
 ---
 
