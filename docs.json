@@ -43,6 +43,7 @@
             "pages": [
               "features/ai-context-briefing",
               "features/version-management",
+              "features/publishing-a-release",
               "features/revisions-and-migrations"
             ]
           },

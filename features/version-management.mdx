@@ -241,9 +241,15 @@ The build script excludes local-only and internal files such as:
 
 Create a new GitHub Release for the tag/version you're shipping.
 
+Before you attach anything, do the zip inspection in Step 8 below. Publish only once the zip checks out.
+
 GitHub automatically generates and attaches its own **Source code (zip)** and **Source code (tar.gz)** assets to every release — these contain the full repo, `framework/` and `app/` together, and are what a brand new install downloads.
 
 Manually attach the `dist/frankphp-2.0.0.zip` file you just built as an **additional release asset**. This is the framework-only artifact existing installs download to update — replace their `framework/` folder with it and leave `app/` untouched.
+
+<Tip>
+For the full hands-on sequence, including committing, tagging, pushing, writing release notes and attaching the zip, follow [Publishing a GitHub Release](/features/publishing-a-release).
+</Tip>
 
 ---
 

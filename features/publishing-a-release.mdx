@@ -1,0 +1,224 @@
+---
+title: "Publishing a GitHub Release"
+description: "The hands-on, step-by-step checklist for shipping a FrankPHP framework release: bump the version, build the zip, commit, tag, push, and publish it on GitHub."
+---
+
+# Publishing a GitHub Release
+
+This page is the checklist you follow when you actually ship a release. [Version Management](/features/version-management) explains the tooling: what `VERSION`, the manifest, and the build script are for. This page walks through the whole thing in order, from bumping the version number to seeing the finished release on GitHub.
+
+If you only do a release every few months, you will forget some of this. That's fine. Open this page and work down it.
+
+Every FrankPHP GitHub Release offers two downloads, and they're for different people:
+
+- **Source code (zip / tar.gz)**: GitHub generates these automatically from the tag. They contain the whole repo, `framework/` and `app/` together. A **new install** downloads one of these.
+- **`frankphp-<version>.zip`**: the framework-only zip you build and attach by hand. **Existing installs** use it to update. They replace their `framework/` folder with its contents and leave `app/` alone.
+
+<Note>
+The examples on this page use `2.0.1` as the version you're shipping. Swap in your real version number wherever you see it.
+</Note>
+
+---
+
+## Before you start
+
+You'll need:
+
+- **Push access** to `github.com/EdStivala/frankphp-framework`
+- **PHP CLI** on your machine, with the `zip` extension (the build script uses `ZipArchive`)
+- **The GitHub CLI (`gh`)**, optional. You only need it if you'd rather publish from the terminal than the GitHub website. To set it up:
+
+```bash
+brew install gh && gh auth login
+```
+
+All commands below are run from one of two places: **inside `framework/`** for the release tools, or **the project root** (the folder that contains both `framework/` and `app/`) for git. Each step tells you which.
+
+---
+
+## The release, step by step
+
+<Steps>
+  <Step title="Bump the version and write the CHANGELOG entry">
+    Open `framework/VERSION` and change it to the new version number. Plain text, the number only:
+
+    ```txt
+    2.0.1
+    ```
+
+    Then add a new entry at the top of `framework/CHANGELOG.md`, using the same format as previous releases:
+
+    ```md
+    ## [2.0.1] - 2026-09-29
+
+    ### Human-readable summary
+
+    A short paragraph or two explaining what this release is about, in plain language.
+
+    ### Added
+
+    - ...
+
+    ### Changed
+
+    - ...
+
+    ### Removed
+
+    - ...
+    ```
+
+    If framework conventions changed, update `framework/codebase.md` too.
+
+    <Warning>
+    **Check PHPMailer upstream every release.** `framework/Services/Email/PHPMailer/` is a vendored copy (currently v6.4.1), so no package manager will tell you about security fixes. Check the [PHPMailer releases](https://github.com/PHPMailer/PHPMailer/releases) for anything newer. If a fix affects you, update the vendored copy and mention it in the CHANGELOG.
+    </Warning>
+  </Step>
+
+  <Step title="Generate the release manifest">
+    From inside `framework/`, run:
+
+    ```bash
+    php tools/generate_release_manifest.php
+    ```
+
+    This reads `VERSION`, compares the framework with the last snapshot in `releases/`, writes a draft `RELEASE_MANIFEST.json`, and saves a new snapshot under `releases/2.0.1/`.
+
+    Then open `RELEASE_MANIFEST.json` and fill in the fields the script can't write for you:
+
+    - `summary`
+    - `breaking_changes`
+    - `ai_notes`
+
+    See [What to update by hand](/features/version-management#what-to-update-by-hand) for which fields to edit, which to review, and which to leave alone.
+  </Step>
+
+  <Step title="Build the framework-only zip">
+    Still inside `framework/`, run:
+
+    ```bash
+    php tools/build_release.php
+    ```
+
+    This writes:
+
+    ```text
+    framework/dist/frankphp-2.0.1/
+    framework/dist/frankphp-2.0.1.zip
+    ```
+
+    It contains framework files only. `.env`, `releases/`, `tools/`, `dist/`, `Versions/`, `.git` and editor files are all left out.
+  </Step>
+
+  <Step title="Inspect the zip">
+    Still inside `framework/`, list what's in the zip before it goes anywhere near GitHub:
+
+    ```bash
+    unzip -l dist/frankphp-2.0.1.zip
+    ```
+
+    You should see these at the top level of the zip, with no wrapping folder:
+
+    - `VERSION`
+    - `CHANGELOG.md`
+    - `codebase.md`
+    - `RELEASE_MANIFEST.json`
+    - `bootstrap.php`
+    - `Core/`, `Controllers/`, `Middleware/`, `Models/`, `Services/`, `sql/`
+
+    You should **not** see `app/`, `.env`, `releases/` or `tools/`.
+
+    <Check>
+    If the listing has the framework files and metadata, and none of `app/`, `.env`, `releases/` or `tools/`, the zip is ready to attach.
+    </Check>
+  </Step>
+
+  <Step title="Commit, tag, and push">
+    From the **project root**, run:
+
+    ```bash
+    git add -A
+    git commit -m "Release v2.0.1"
+    git tag -a v2.0.1 -m "FrankPHP v2.0.1"
+    git push origin main --tags
+    ```
+
+    This commits the version bump, CHANGELOG, manifest and new `releases/2.0.1/` snapshot, creates an annotated `v2.0.1` tag, and pushes both to GitHub.
+
+    <Note>
+    `dist/` is gitignored, so the zip you just built is never committed. It only reaches GitHub when you attach it to the Release in the next step.
+    </Note>
+  </Step>
+
+  <Step title="Create the GitHub Release">
+    Use either the GitHub website or the GitHub CLI.
+
+    <Tabs>
+      <Tab title="GitHub website">
+        1. Open the repo on GitHub and go to **Releases**, then **Draft a new release**.
+        2. Under **Choose a tag**, pick `v2.0.1`, the tag you just pushed.
+        3. Set the title to `FrankPHP v2.0.1`.
+        4. For the release notes, paste the `2.0.1` entry from `framework/CHANGELOG.md` (everything under the `## [2.0.1]` heading).
+        5. Drag `framework/dist/frankphp-2.0.1.zip` into the **Attach binaries** area and wait for the upload to finish.
+        6. Click **Publish release**.
+      </Tab>
+      <Tab title="GitHub CLI">
+        From the **project root**, pull this version's section out of the CHANGELOG into a notes file:
+
+        ```bash
+        awk '/^## \[2.0.1\]/{f=1;next} /^## \[/{f=0} f' framework/CHANGELOG.md > notes.md
+        ```
+
+        Check that `notes.md` has what you expect, then create the release with the zip attached:
+
+        ```bash
+        gh release create v2.0.1 framework/dist/frankphp-2.0.1.zip --title "FrankPHP v2.0.1" --notes-file notes.md
+        ```
+
+        Delete `notes.md` afterwards so it doesn't get committed with your next release.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify the release">
+    Open the release page on GitHub. Under **Assets** you should see three files:
+
+    - `frankphp-2.0.1.zip`, the one you attached
+    - **Source code (zip)** and **Source code (tar.gz)**, which GitHub added automatically
+
+    Then test the update path the way an existing install would, in a throwaway copy of a project running the previous version:
+
+    1. Download `frankphp-2.0.1.zip` from the release page.
+    2. Replace that project's `framework/` folder with the zip's contents. Leave `app/` untouched.
+    3. Load the app and confirm it boots.
+    4. Check that the sidebar footer shows **FrankPHP v2.0.1**.
+
+    <Check>
+    If the throwaway project boots and the footer shows the new version, the release is done.
+    </Check>
+  </Step>
+</Steps>
+
+---
+
+## Writing good release notes
+
+Your CHANGELOG entry doubles as the release notes, so a little care here pays off twice.
+
+- **Open with the Human-readable summary.** Most people read only the first paragraph, so put what the release is about and whether they should update there.
+- **Call out breaking changes clearly.** If anything breaks, say so near the top in its own short section. Say exactly what an existing app has to change.
+- **Tell existing installs how to update.** One line is enough: *"To update an existing install, replace your `framework/` folder with the contents of `frankphp-2.0.1.zip`. Don't touch `app/`."*
+
+---
+
+## Quick checklist
+
+1. Bump `framework/VERSION`
+2. Add the `framework/CHANGELOG.md` entry (and update `codebase.md` if conventions changed)
+3. Check PHPMailer upstream for security fixes
+4. Inside `framework/`: `php tools/generate_release_manifest.php`, then edit `summary`, `breaking_changes`, `ai_notes`
+5. Inside `framework/`: `php tools/build_release.php`
+6. `unzip -l dist/frankphp-2.0.1.zip`: framework files only, no `app/`, `.env`, `releases/` or `tools/`
+7. From the project root: commit, tag `v2.0.1`, `git push origin main --tags`
+8. Create the GitHub Release from the tag, paste the CHANGELOG entry, attach the zip, publish
+9. Check the release assets, then test the update in a throwaway project
