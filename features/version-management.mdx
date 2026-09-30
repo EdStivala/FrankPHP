@@ -264,6 +264,11 @@ At minimum, check that it includes the framework itself plus your release metada
 - `codebase.md`
 - `RELEASE_MANIFEST.json`
 
+If the release includes a database migration, also check for:
+
+- the script under `sql/migrations/` (for example `sql/migrations/v2.1.0_signup_terms.sql`)
+- its notes under `Versions/` (for example `Versions/FrankPHP_v2.1.0_migration_notes.md`)
+
 <Check>
 If the zip contains only release-safe files, no `app/` content, and no local credentials, the build is ready to attach to the release.
 </Check>

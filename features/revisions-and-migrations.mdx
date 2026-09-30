@@ -101,6 +101,20 @@ One consequence worth knowing about if you're migrating an older single-folder F
 
 ---
 
+## The v2.1.0 example
+
+v2.1.0 is the first release to ship a migration script inside the framework itself: `framework/sql/migrations/v2.1.0_signup_terms.sql`. It shows the revision/migration split in its simplest form.
+
+- **Fresh installs** get the change through `schema.core.sql`. The four new Terms & Conditions columns are already in the schema, so there's nothing to run.
+- **Existing installs** run the migration once per environment. Each `ALTER` checks `information_schema` first, so the script is safe to run more than once.
+- **No backfill.** Existing users get empty terms columns on purpose. The migration adds structure and doesn't invent history.
+- **Order matters.** Deploy the new `framework/`, then run the migration, and only then turn on the feature that needs the new columns (`signup.require_terms`). The framework checks for the columns and shows a clear error if the order is wrong.
+- **Notes ship with the release.** The human-readable notes are in `framework/Versions/FrankPHP_v2.1.0_migration_notes.md`, next to the script.
+
+For the step-by-step upgrade, see [Upgrading to 2.1.0](/users/upgrading-to-2-1-0).
+
+---
+
 ## Recommended upgrade workflow
 
 Follow this workflow for each FrankPHP release.

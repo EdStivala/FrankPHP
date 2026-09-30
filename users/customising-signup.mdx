@@ -1,0 +1,80 @@
+---
+title: "Customising Sign-up"
+description: "Change which tenant and role new users get, and restyle FrankPHP's sign-up views safely."
+---
+
+# Customising Sign-up
+
+FrankPHP's sign-up works out of the box. There are two places you may want to adapt it: **where new users go**, and **how the sign-up pages look**.
+
+---
+
+## Changing where new users go
+
+By default every sign-up creates a new tenant, with the user as its owner. Your app might work differently. For example, clients might need to join their coach's existing tenant.
+
+You can replace this rule in `app/bootstrap.php`:
+
+```php
+// Example: every sign-up joins tenant 1 as a regular user (the pre-2.1 behaviour)
+$container->override(\Frank\Services\SignupTenantResolver::class, fn ($c) =>
+    new class implements \Frank\Services\SignupTenantResolver {
+        public function resolve(string $email, string $name): array {
+            return ['tenant_id' => 1, 'role' => 'user'];
+        }
+    }
+);
+```
+
+- Your rule receives the **verified email** and the **user's name**.
+- It returns the **tenant id** and the **role** for the new user.
+- It runs inside the same all-or-nothing step as the rest of sign-up. If sign-up fails, anything your rule created is undone too.
+
+<Tip>
+`override()` is FrankPHP's supported way to replace a framework binding. See [Deliberately replacing a binding](/architecture/dependency-injection#deliberately-replacing-a-binding). If you change the sign-up rule, record it in your [MYAPP.md](/getting-started/working-with-myapp) so you and your AI assistant know the app differs from the framework default.
+</Tip>
+
+---
+
+## Custom sign-up views
+
+The sign-up views belong to your app, so you can restyle them freely:
+
+- `app/Views/auth/signup.php`
+- `app/Views/auth/signup-verify.php`
+
+If you've turned on [Terms & Conditions acceptance](/users/terms-acceptance), keep the three form requirements listed there: the `terms_accepted` checkbox, showing `$error`, and re-ticking the box.
+
+### The verify page: submit once, with a button
+
+On the verify page, the user should submit the code with a button, and the form should block a second submission. The starter page shows how:
+
+```html
+<form id="verifyForm" method="post" action="/signup/verify">
+  <!-- ...code input... -->
+  <button type="submit" id="verifySubmit">Verify &amp; Create Account</button>
+</form>
+
+<script>
+  const form   = document.getElementById('verifyForm');
+  const button = document.getElementById('verifySubmit');
+  let submitted = false;
+  form.addEventListener('submit', function (e) {
+    if (submitted) { e.preventDefault(); return; }
+    submitted = true;
+    button.disabled = true;
+  });
+</script>
+```
+
+<Warning>
+**Don't auto-submit when the 6th digit is typed.** It can send two requests, and the second one logs the brand-new user out again.
+</Warning>
+
+---
+
+## Next
+
+- [Upgrading to 2.1.0](/users/upgrading-to-2-1-0): set up your sign-up rule before you deploy 2.1.
+
+Introduced in [v2.1.0](/changelog#30-september-2026).

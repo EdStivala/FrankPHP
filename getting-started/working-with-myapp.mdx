@@ -109,6 +109,8 @@ MYAPP.md is a context document, not a substitute for readable code. It tells an 
 
 Business rules are the exception: if a rule is non-obvious from the schema or code (for example, "a session cannot be started if the user already has an incomplete one"), write it out fully. These are exactly the rules an agent is most likely to violate if they're only implicit in the code.
 
+The same goes for places where your app deliberately changes framework behaviour. For example, if you replace the sign-up rule (`SignupTenantResolver`) so new users join an existing tenant, or turn on `signup.require_terms`, record it in MYAPP.md. See [Customising Sign-up](/users/customising-signup).
+
 ---
 
 ## Keeping the Glossary up to date

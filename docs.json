@@ -48,6 +48,17 @@
             ]
           },
           {
+            "group": "USERS",
+            "pages": [
+              "users/overview",
+              "users/signup-flow",
+              "users/tenants-and-roles",
+              "users/terms-acceptance",
+              "users/customising-signup",
+              "users/upgrading-to-2-1-0"
+            ]
+          },
+          {
             "group": "COOKBOOK",
             "pages": [
               "cookbook/using-clock-in-your-apps"

@@ -65,13 +65,17 @@ Let’s verify it works by unlocking the **Forgot My Password** workflow:
 3. Input the seed user email: `owner@tenant1.com`.
 4. Check your inbox.
 
+<Tip>
+**Optional: test the sign-up flow too.** Go to `/signup`, register with an email address you can read, enter the 6-digit code, and you should land on the dashboard of a brand-new tenant. The `MAIL_SITE_ADMIN` address gets two alerts: one when the code is requested, and one when the account is created that names the new tenant. See [New User Sign-up Flow](/users/signup-flow).
+</Tip>
+
 ---
 
 ## Step 4: Customising Email Templates
 
 FrankPHP avoids complex, bloated templating engines. Following the framework philosophy of *"explicit over magic,"* email layouts are constructed dynamically using standard PHP objects.
 
-`EmailService` triggers three framework-owned flows directly — signup verification, password reset, and the platform-owner signup alert — each rendered by a default template class shipped inside `framework/Services/Email/Templates/`.
+`EmailService` triggers three framework-owned flows directly — signup verification, password reset, and the platform-owner signup alert — each rendered by a default template class shipped inside `framework/Services/Email/Templates/`. The platform-owner alert is sent to `MAIL_SITE_ADMIN` twice per sign-up: when a code is requested, and when the account is created. From v2.1.0 the second alert's `$event` text includes the new tenant's name and the user's role.
 
 <Warning>
 **Never edit those template files directly.** They live inside `framework/`, so any change you make there is silently lost the next time you update the framework. Override the template *class* instead — via config.

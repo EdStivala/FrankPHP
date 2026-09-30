@@ -94,12 +94,13 @@ app/public/index.php
         └── new Container()
               └── singleton: EmailService              ← built once from config, shared
               └── singleton: PasswordResetService       ← gets the EmailService
-              └── singleton: SignupService              ← gets the EmailService
-              └── singleton: UserService                ← gets the User model
               └── singleton: TenantService               ← gets the Tenant model
+              └── singleton: SignupTenantResolver        ← default CreateTenantForSignup, gets TenantService
+              └── singleton: SignupService              ← gets the EmailService + SignupTenantResolver + $config['signup']
+              └── singleton: UserService                ← gets the User model
               └── singleton: UserManagementService       ← gets the User model
               └── bind: AuthController           ← gets PasswordResetService + UserService
-              └── bind: SignupController         ← gets SignupService
+              └── bind: SignupController         ← gets SignupService + UserService
               └── bind: UserManagementController ← gets UserManagementService + $config
         └── new Router($container)
         └── framework routes registered
@@ -119,13 +120,15 @@ Controllers that have no constructor dependencies — which is most of them — 
 
 ## The framework services
 
-Six services are registered in the container by `framework/bootstrap.php` and should not need to be modified as part of application feature work.
+Seven services are registered in the container by `framework/bootstrap.php`. Six of them should not need to be modified as part of application feature work; the seventh, `SignupTenantResolver`, is a deliberate policy point you may replace.
 
 **`EmailService`** is registered as a singleton. It is built once from `$config['mail']` and is the only place in the application that knows about SMTP credentials. Every service that needs to send email receives this single instance.
 
 **`PasswordResetService`** is registered as a singleton. It depends on `EmailService` and the `User` model.
 
-**`SignupService`** is registered as a singleton. It depends on `EmailService` and the `User` model.
+**`SignupService`** is registered as a singleton. It depends on `EmailService`, the `User` model and `SignupTenantResolver`, and reads the optional `$config['signup']` settings (Terms & Conditions acceptance, v2.1.0).
+
+**`SignupTenantResolver`** is registered as a singleton (v2.1.0). It decides which tenant and role a newly verified user gets. The default, `CreateTenantForSignup`, creates a new tenant with the user as `owner`. Unlike the others, this binding is **meant** to be replaced when your app needs a different rule — see [Customising Sign-up](/users/customising-signup).
 
 **`UserService`** is registered as a singleton. It depends on the `User` model — owns business logic for the user record (`recordLogin()`, `saveSettings()`).
 
@@ -150,6 +153,10 @@ $container->override(\Frank\Services\Email\EmailService::class, function ($c) us
 ```
 
 This is a deliberate, visible replacement rather than something that can happen by accident. `Router::override(method, pattern, handler, middleware)` follows the identical pattern for replacing a framework-registered route.
+
+<Tip>
+For a real-world example, see [Customising Sign-up](/users/customising-signup), which uses `override()` to change which tenant a new user joins.
+</Tip>
 
 ---
 

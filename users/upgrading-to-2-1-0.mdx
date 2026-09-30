@@ -1,0 +1,48 @@
+---
+title: "Upgrading to 2.1.0"
+description: "Upgrade an existing FrankPHP install to v2.1.0: check the sign-up behaviour change, run the database migration, then optionally turn on Terms acceptance."
+---
+
+# Upgrading to 2.1.0
+
+FrankPHP 2.1.0 changes what happens when someone signs up, and adds four database columns for Terms & Conditions acceptance. Follow these steps on each existing install. New installs need none of this.
+
+---
+
+<Steps>
+  <Step title="Replace the framework/ folder">
+    Replace your `framework/` folder with the 2.1.0 release, as for any update. Leave `app/` untouched.
+  </Step>
+  <Step title="Check the sign-up behaviour change">
+    New sign-ups now create **their own tenant**, with the user as its **owner**. If your app needs a different rule, for example new users joining an existing tenant, set it up **before** you deploy. See [Customising Sign-up](/users/customising-signup).
+  </Step>
+  <Step title="Run the database migration">
+    Run this script against each environment's database:
+
+    ```text
+    framework/sql/migrations/v2.1.0_signup_terms.sql
+    ```
+
+    - It adds four empty columns and changes no data.
+    - It is safe to run more than once.
+    - Existing users won't have a terms record. That's expected. Don't fill one in for them.
+  </Step>
+  <Step title="Optionally turn on Terms acceptance">
+    Add the `signup` settings to `app/Config/config.php`, and make sure your sign-up form meets the requirements in [Terms & Conditions Acceptance](/users/terms-acceptance).
+
+    Upgraded apps don't get the starter app's placeholder `/terms` page automatically. Copy it from the starter app if you want it, and **replace its content** before going live.
+  </Step>
+</Steps>
+
+<Warning>
+**Run the migration (step 3) before you turn on Terms acceptance (step 4).** If Terms acceptance is on before the migration has run, the sign-up pages show an error telling you to run `v2.1.0_signup_terms.sql`. Nothing else is affected, and running the migration fixes it.
+</Warning>
+
+---
+
+## More detail
+
+- The release includes full notes at `framework/Versions/FrankPHP_v2.1.0_migration_notes.md`.
+- For the thinking behind shipping migrations separately from framework files, see [Revisions and Migrations](/features/revisions-and-migrations).
+
+Full release notes: [v2.1.0 changelog](/changelog#30-september-2026).

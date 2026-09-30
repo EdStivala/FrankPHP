@@ -107,7 +107,7 @@ All commands below are run from one of two places: **inside `framework/`** for t
     framework/dist/frankphp-2.0.1.zip
     ```
 
-    It contains framework files only. `.env`, `releases/`, `tools/`, `dist/`, `Versions/`, `.git` and editor files are all left out.
+    It contains framework files only. `.env`, `releases/`, `tools/`, `dist/`, `.git` and editor files are all left out. From v2.1.0, `Versions/` (migration notes) is included, so existing installs get the notes alongside any scripts in `sql/migrations/`.
   </Step>
 
   <Step title="Inspect the zip">
@@ -124,7 +124,9 @@ All commands below are run from one of two places: **inside `framework/`** for t
     - `codebase.md`
     - `RELEASE_MANIFEST.json`
     - `bootstrap.php`
-    - `Core/`, `Controllers/`, `Middleware/`, `Models/`, `Services/`, `sql/`
+    - `Core/`, `Controllers/`, `Middleware/`, `Models/`, `Services/`, `sql/`, `Versions/`
+
+    If the release includes a database migration, check that its script is under `sql/migrations/` and its notes are under `Versions/`.
 
     You should **not** see `app/`, `.env`, `releases/` or `tools/`.
 
@@ -218,7 +220,7 @@ Your CHANGELOG entry doubles as the release notes, so a little care here pays of
 3. Check PHPMailer upstream for security fixes
 4. Inside `framework/`: `php tools/generate_release_manifest.php`, then edit `summary`, `breaking_changes`, `ai_notes`
 5. Inside `framework/`: `php tools/build_release.php`
-6. `unzip -l dist/frankphp-2.0.1.zip`: framework files only, no `app/`, `.env`, `releases/` or `tools/`
+6. `unzip -l dist/frankphp-2.0.1.zip`: framework files only, no `app/`, `.env`, `releases/` or `tools/`. Any migration script and notes are included.
 7. From the project root: commit, tag `v2.0.1`, `git push origin main --tags`
 8. Create the GitHub Release from the tag, paste the CHANGELOG entry, attach the zip, publish
 9. Check the release assets, then test the update in a throwaway project

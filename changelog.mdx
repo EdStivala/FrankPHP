@@ -14,7 +14,61 @@ Use it when you want to understand what changed between framework versions, whet
 For upgrade planning, read this page alongside **Revisions and Migrations**. The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
 </Note>
 
-<Update label="6 August 2026" description="v2.0.0" tags={["Current", "Breaking", "Architecture", "Framework/App split"]}>
+<Update label="30 September 2026" description="v2.1.0" tags={["Current", "Users", "Signup", "Migration"]}>
+  ## Tenant-per-signup and Terms & Conditions acceptance
+
+  FrankPHP 2.1.0 changes what a new sign-up means. **Every verified sign-up now creates its own tenant, and the person signing up becomes that tenant's `owner`.** Before this release every sign-up joined tenant 1 as a plain `user`, which blocked real self-service sign-ups on live apps.
+
+  The tenant is named automatically from the sign-up email, with no extra form field. `jane@acme-corp.com` becomes "Acme Corp", and `jane.doe@gmail.com` becomes "Jane Doe's Workspace". The owner can rename it in Tenant Settings. The rule is swappable, so apps with a different model, such as joining an existing tenant, can replace it.
+
+  The release also adds **opt-in Terms & Conditions acceptance** at sign-up. When enabled, FrankPHP refuses sign-ups that haven't accepted the terms, and records when they accepted and which version.
+
+  New guides: [Users Overview](/users/overview), [New User Sign-up Flow](/users/signup-flow), [Tenants, Ownership & Roles](/users/tenants-and-roles), [Terms & Conditions Acceptance](/users/terms-acceptance), [Customising Sign-up](/users/customising-signup) and [Upgrading to 2.1.0](/users/upgrading-to-2-1-0).
+
+  ### Added
+
+  - `SignupTenantResolver`, the rule that decides which tenant and role a new user gets. The default, `CreateTenantForSignup`, creates a new tenant with the user as `owner`. Replace it with `$container->override()` in `app/bootstrap.php`.
+  - Automatic tenant naming and unique slugs (`acme-corp`, `acme-corp-2`, …), with the tenant's company email set to the sign-up email.
+  - `Database::transaction()`. Tenant, user and token are written together, so a failed sign-up never leaves an orphan tenant.
+  - Opt-in config `signup.require_terms` and `signup.terms_version` in `app/Config/config.php`.
+  - Columns `terms_accepted_at` and `terms_version` on `users` and `signup_tokens`.
+  - `framework/sql/migrations/v2.1.0_signup_terms.sql`, an idempotent migration for existing installs.
+  - `framework/Versions/FrankPHP_v2.1.0_migration_notes.md`.
+  - `codebase.md` §16.9 "Signup: Tenant Creation and Terms Acceptance".
+  - Starter app: Terms checkbox on the sign-up page, and a placeholder `/terms` page (`LegalController` and `Views/auth/terms.php`).
+
+  ### Changed
+
+  - `SignupService` no longer hardcodes tenant 1 and role `user`. It uses the `SignupTenantResolver`, enforces terms acceptance on the server when enabled, and keeps the acceptance if the code is resent.
+  - The site-owner alert sent when an account is created now names the new tenant and role.
+  - `SignupController` now also receives `UserService`.
+  - The release zip now includes `Versions/` (migration notes) alongside `sql/migrations/`.
+
+  ### Fixed
+
+  - The automatic login after sign-up now records the login time. Previously a new user showed as "never logged in".
+  - The starter verify page no longer auto-submits on the 6th digit. That could send a second request that logged the new user straight back out.
+
+  <Warning>
+  **Behaviour change for existing apps:** new sign-ups create their own tenant as `owner`. If your app needs sign-ups to join an existing tenant, override `SignupTenantResolver` before deploying. Existing installs must run the migration **before** turning on Terms acceptance. See [Upgrading to 2.1.0](/users/upgrading-to-2-1-0).
+  </Warning>
+</Update>
+
+<Update label="29 September 2026" description="v2.0.1" tags={["Users", "Roles"]}>
+  ## The `platform` role
+
+  FrankPHP 2.0.1 introduces `platform` as a user role: a site-operator "super user" above tenant owners. It lays the foundation for cross-tenant access and for the new-tenant sign-up process in 2.1.0.
+
+  ### Changed
+
+  - The User Management dashboard now admits `platform` users as well as `admin` and `owner`.
+
+  <Note>
+  `platform` is not cross-tenant yet. A platform user still can't open another tenant's pages, and Tenant Settings is still limited to `admin` and `owner`. See [Tenants, Ownership & Roles](/users/tenants-and-roles).
+  </Note>
+</Update>
+
+<Update label="6 August 2026" description="v2.0.0" tags={["Breaking", "Architecture", "Framework/App split"]}>
   ## The framework/application split
 
   FrankPHP 2.0.0 is the **framework/application split**: the single project folder is now two independent sibling folders, `framework/` and `app/`, each with its own PSR-4 namespace root (`Frank\` and `App\`, no searching or fallback between them). `framework/` contains nothing but framework-owned code and is meant to be replaced wholesale on every future update. `app/` — routes, business logic, views, public assets, config, `.env`, and `MYAPP.md` — is never touched by an update once you've customized it.

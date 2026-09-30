@@ -68,7 +68,7 @@ Connect to your hosting account via FTP and navigate to your root directory. Cre
 </Note>
 
 <Note>
-Some FrankPHP-based products also add a `/platform` folder — a super-user layer that sits above individual tenant admins. This is a newer, still-emerging pattern and not yet part of the core framework release. Mention it here only if it's relevant to what you're building; most projects won't need it yet.
+Some FrankPHP-based products also add a `/platform` folder — a super-user layer that sits above individual tenant admins. Since v2.0.1 the framework has a matching `platform` user role, but cross-tenant access is not finished yet (see [Tenants, Ownership & Roles](/users/tenants-and-roles)). Mention it here only if it's relevant to what you're building; most projects won't need it yet.
 </Note>
 
 ---
@@ -180,6 +180,10 @@ Log in with the **owner** account. After login you'll land on the default dashbo
 <Warning>
 Change these passwords before you share the URL with anyone. They are seed credentials for development only.
 </Warning>
+
+<Note>
+The seed accounts live in Tenant 1. Anyone who signs up through `/signup` gets **their own new tenant** and becomes its owner (from v2.1.0). See [New User Sign-up Flow](/users/signup-flow).
+</Note>
 
 ---
 
@@ -305,5 +309,6 @@ This keeps FrankPHP aligned with common modern PHP practices while still staying
 
 - **Add a form** — learn how to handle POST requests and save data to the database
 - **Understand middleware** — see the full middleware cheatsheet and when to use each combination
+- **Understand users and sign-up** — read the [Users Overview](/users/overview) to see how sign-up, tenants and roles work
 - **Start your application** — work through [Working with MYAPP.md](/getting-started/working-with-myapp) to record your app's name, tables, and routes as you build
 - **Configure version management** — use the release tooling to track versions, changes, and packaged framework-only updates

@@ -1,0 +1,108 @@
+---
+title: "Terms & Conditions Acceptance"
+description: "Require new users to accept your Terms & Conditions at sign-up, and record when they accepted and which version."
+---
+
+# Terms & Conditions Acceptance
+
+FrankPHP can require new users to accept your Terms & Conditions. It records **when** they accepted and **which version** of your terms they accepted.
+
+---
+
+## It's opt-in
+
+The feature is **off unless you turn it on**. An app that upgrades to 2.1 without changing its config behaves exactly as before.
+
+---
+
+## Turning it on
+
+In `app/Config/config.php`:
+
+```php
+'signup' => [
+    'require_terms' => true,       // enforce + record acceptance
+    'terms_version' => '2026-10',  // your current terms version (optional)
+],
+```
+
+Change `terms_version` whenever your terms change.
+
+<Warning>
+**Existing installs:** run the v2.1.0 database migration **before** turning this on. See [Upgrading to 2.1.0](/users/upgrading-to-2-1-0). New installs already have the columns they need.
+</Warning>
+
+---
+
+## What your sign-up form must do
+
+The starter app's sign-up page already does all of this. If you've customised yours, check these three things:
+
+1. **Include a checkbox** named `terms_accepted` with the value `1`:
+
+   ```html
+   <input type="checkbox" name="terms_accepted" value="1" required
+          <?= (($terms_accepted ?? null) === '1') ? 'checked' : '' ?>>
+   <label>I have read and agree to the <a href="/terms" target="_blank">Terms &amp; Conditions</a>.</label>
+   ```
+
+2. **Show `$error`.** If the box isn't ticked, the user sees *"You must accept the Terms & Conditions to continue."*
+3. **Re-tick the box from `$terms_accepted`** after any error, as in the snippet above, so users don't have to tick it again.
+
+<Note>
+**The browser checks are only a convenience.** A `required` checkbox or a disabled button can be bypassed. FrankPHP does the real check on the server.
+</Note>
+
+---
+
+## How it behaves
+
+| `require_terms` | Box ticked? | Result |
+|---|---|---|
+| Off (or not set) | Either | Sign-up works as normal. Nothing is recorded. |
+| On | No | Sign-up is refused with the message above. No code is sent. |
+| On | Yes | Sign-up works, and the acceptance is recorded. |
+
+---
+
+## What gets recorded
+
+- **When:** the date and time (UTC) the user submitted the sign-up form with the box ticked. This is the form submission, not the moment they entered the code, and it doesn't change if they ask for the code to be resent.
+- **Which version:** your `terms_version` at that moment.
+- Both values are stored on the user.
+- Users who signed up before 2.1, or while the feature was off, have no record. **Don't invent one for them.**
+- If your checkbox also confirms something else, for example "I am over 18", the same record covers it.
+
+---
+
+## The Terms page
+
+The starter app includes a **placeholder** Terms page at `/terms`.
+
+<Warning>
+**Replace the placeholder with your real Terms & Conditions before going live.**
+</Warning>
+
+Apps upgraded from an earlier version don't get this page automatically. If you want it, copy these from the starter app:
+
+- `app/Views/auth/terms.php`
+- `app/Controllers/LegalController.php`
+- the `GET /terms` route in `app/bootstrap.php`
+
+---
+
+## Not available yet
+
+These are planned but **not** in FrankPHP today:
+
+- Asking existing users to re-accept when `terms_version` changes.
+- A consent audit log that keeps a history of acceptances.
+
+---
+
+## Next
+
+- [Customising Sign-up](/users/customising-signup): restyle the sign-up views without breaking terms acceptance.
+- [Upgrading to 2.1.0](/users/upgrading-to-2-1-0): the migration you need before turning this on.
+
+Introduced in [v2.1.0](/changelog#30-september-2026).

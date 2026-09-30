@@ -1,0 +1,66 @@
+---
+title: "Tenants, Ownership & Roles"
+description: "How FrankPHP creates and names a tenant for every sign-up, and what the owner, admin, user and platform roles mean."
+---
+
+# Tenants, Ownership & Roles
+
+**Every sign-up creates its own tenant**, and the person signing up becomes its **owner**.
+
+<Note>
+*Changed in v2.1.0:* earlier versions added every sign-up to tenant 1 as a regular user. To keep that behaviour, or to use a different rule, see [Customising Sign-up](/users/customising-signup).
+</Note>
+
+---
+
+## How the tenant is named
+
+There's no "company name" field on the sign-up form. FrankPHP names the tenant from the email address, and the owner can change the name later in **Tenant Settings**.
+
+| Sign-up email | Tenant name | Tenant slug |
+|---|---|---|
+| `jane@acme-corp.com` | Acme Corp | `acme-corp` |
+| `bob@mail.acme.co.uk` | Acme | `acme` |
+| `jane.doe@gmail.com` | Jane Doe's Workspace | `jane-does-workspace` |
+
+- **Business email:** the tenant is named after the organisation's domain. Subdomains and two-part endings such as `.co.uk` are handled.
+- **Personal email** (Gmail, Outlook, Hotmail, Yahoo, iCloud, Proton and other common providers): the tenant is named "*Name*'s Workspace".
+- **Slugs are unique.** If `acme-corp` is taken, the next tenant gets `acme-corp-2`, then `acme-corp-3`, and so on.
+- **Company email** on the tenant is set to the sign-up email.
+
+<Warning>
+Two colleagues who sign up separately get **two separate tenants**. Letting someone join an existing tenant needs an invite flow, and FrankPHP doesn't have one yet.
+</Warning>
+
+---
+
+## Roles
+
+| Role | Meaning |
+|---|---|
+| `owner` | Created the tenant at sign-up. Can manage tenant settings and users. |
+| `admin` | Same management access as the owner. |
+| `user` | A standard member of the tenant. |
+| `platform` | A site-operator role above tenant owners. Cross-tenant access isn't finished yet. |
+
+### What each role can do today
+
+| Area | `owner` | `admin` | `user` | `platform` |
+|---|:---:|:---:|:---:|:---:|
+| Tenant dashboard and your own pages | ✓ | ✓ | ✓ | ✓ |
+| Account Settings (your own profile) | ✓ | ✓ | ✓ | ✓ |
+| User Management dashboard (`/tenant/{id}/users`) | ✓ | ✓ | | ✓ |
+| Tenant Settings | ✓ | ✓ | | |
+
+<Note>
+The `platform` role was added in v2.0.1. For now a platform user is still limited to their own tenant, like everyone else. Cross-tenant access, and finer-grained privileges for all roles, will come with FrankPHP's privilege framework. This page will be updated as that work ships.
+</Note>
+
+---
+
+## Next
+
+- [Terms & Conditions Acceptance](/users/terms-acceptance): record that new owners accepted your terms.
+- [Customising Sign-up](/users/customising-signup): change which tenant and role a new user gets.
+
+Changed in [v2.1.0](/changelog#30-september-2026).
