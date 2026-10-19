@@ -1,0 +1,70 @@
+---
+title: "Upgrading to 2.2.0"
+description: "Upgrade an existing FrankPHP install to v2.2.0: replace framework/, then copy two small view changes into your app. No database migration."
+---
+
+# Upgrading to 2.2.0
+
+FrankPHP 2.2.0 lets platform users see every tenant's users on the Users dashboard, and hides the Users links from the `user` role. There are **no database or route changes**. Follow these steps on each existing install. New installs need none of this.
+
+---
+
+<Steps>
+  <Step title="Replace the framework/ folder">
+    Replace your `framework/` folder with the 2.2.0 release, as for any update. No database migration is needed.
+  </Step>
+  <Step title="Update your app's views">
+    The new Tenant column and the hidden Users links are in your app's views. These files belong to your app, so the framework update doesn't change them. Copy these changes in.
+
+    **`app/Views/users/management-dashboard.php`**: show the tenant when the list spans all tenants. The page receives `$crossTenant` (true or false), and each user row has a `tenantName`.
+
+    ```php
+    <p class="text-muted mb-0" style="font-size:0.8125rem;"><?= $crossTenant ? 'All tenants' : htmlspecialchars($tenant['name'] ?? '') ?></p>
+    ...
+    <th>Name</th>
+    <?php if ($crossTenant) : ?><th>Tenant</th><?php endif; ?>
+    ...
+    <td><?= htmlspecialchars($row['name']) ?></td>
+    <?php if ($crossTenant) : ?><td><?= htmlspecialchars($row['tenantName']) ?></td><?php endif; ?>
+    ```
+
+    **`app/Views/partials/app-nav.php`** (the sidebar **Users** link) and **`app/Views/partials/app-header.php`** (the **Manage Users** link and the divider above it): wrap each one so the `user` role doesn't see it.
+
+    ```php
+    <?php if (in_array($user['role'] ?? '', ['platform', 'admin', 'owner'], true)) : ?>
+        ... the Users / Manage Users link ...
+    <?php endif; ?>
+    ```
+
+    <Note>
+    If you skip this step, the page still works. Platform users see every tenant's users, but without the Tenant column. The `user` role still sees the links, and is refused on click.
+    </Note>
+  </Step>
+  <Step title="Only if your app builds UserManagementService itself">
+    Most apps don't, and the framework's own setup already does this. If your `app/bootstrap.php` creates `UserManagementService` itself, pass the tenant model too:
+
+    ```php
+    new \Frank\Services\UserManagementService(
+        userModel: new \Frank\Models\User(),
+        tenantModel: new \Frank\Models\Tenant(),
+    );
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Check it worked
+
+- **Log in as a platform user:** Users lists people from several tenants, with a Tenant column.
+- **Log in as an owner or admin:** Users lists your own tenant only.
+- **Log in as a user:** there's no Users link, and visiting `/tenant/{id}/users` sends you back with `?error=forbidden`.
+
+---
+
+## More detail
+
+- The release includes full notes at `framework/Versions/FrankPHP_v2.2.0_upgrade_notes.md`.
+- [Roles and the Users Dashboard](/users/users-dashboard) explains what each role sees.
+
+Full release notes: [v2.2.0 changelog](/changelog#19-october-2026).

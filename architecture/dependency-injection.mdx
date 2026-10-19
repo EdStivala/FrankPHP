@@ -134,7 +134,7 @@ Seven services are registered in the container by `framework/bootstrap.php`. Six
 
 **`TenantService`** is registered as a singleton. It depends on the `Tenant` model — owns business logic for the tenant record (`saveSettings()`).
 
-**`UserManagementService`** is registered as a singleton. It depends on the `User` model — provides the data payload for the admin/owner user management dashboard.
+**`UserManagementService`** is registered as a singleton. It depends on the `User` and `Tenant` models — provides the data payload for the Users dashboard. Since v2.2.0 a `platform` user sees every tenant's users there. See [Roles and the Users Dashboard](/users/users-dashboard). If your app builds this service itself, pass `tenantModel: new \Frank\Models\Tenant()` as well.
 
 <Note>
 `EmailService`, `PasswordResetService`, `SignupService`, `UserService`, `TenantService`, and `UserManagementService` are framework-owned. They are documented in `codebase.md` §8.2 and §16.5. Do not modify these bindings as part of application feature work — if you need to change framework behaviour, that is a deliberate upgrade decision.

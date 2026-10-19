@@ -14,7 +14,38 @@ Use it when you want to understand what changed between framework versions, whet
 For upgrade planning, read this page alongside **Revisions and Migrations**. The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
 </Note>
 
-<Update label="30 September 2026" description="v2.1.0" tags={["Current", "Users", "Signup", "Migration"]}>
+<Update label="19 October 2026" description="v2.2.0" tags={["Current", "Users", "Roles", "Security"]}>
+  ## Platform users see every tenant's users
+
+  FrankPHP 2.2.0 lets the platform operator see every user on the site. On the **Users** dashboard, a `platform` user now sees users from **all tenants**, with an extra **Tenant** column and an "All tenants" subtitle. The summary cards cover the same users. `owner` and `admin` still see their own tenant only.
+
+  The starter app now **hides the Users links from the `user` role**. Before, those users could see the links but were refused on click.
+
+  Tenant isolation is unchanged. Only the logged-in user's role decides whether the all-tenants view is shown, and the list is built one tenant at a time, so there's still no query across the whole users table. There are no database or route changes.
+
+  New and updated guides: [Roles and the Users Dashboard](/users/users-dashboard), [Tenant Isolation and the Platform Role](/architecture/tenant-isolation), [Tenants, Ownership & Roles](/users/tenants-and-roles) and [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+
+  ### Added
+
+  - Users dashboard (`GET /tenant/{tenant_id}/users`): a `platform` user sees users from every tenant, with a Tenant column. The view receives `$crossTenant` (true or false), and each user row has a `tenantName`.
+  - `framework/Versions/FrankPHP_v2.2.0_upgrade_notes.md`.
+
+  ### Changed
+
+  - `UserManagementService` now also takes the `Tenant` model. The framework's own setup passes it. Apps that build the service themselves must pass `tenantModel: new \Frank\Models\Tenant()`.
+  - Starter app views (not in the framework zip): `users/management-dashboard.php` shows the Tenant column and "All tenants" subtitle for platform users. `partials/app-nav.php` and `partials/app-header.php` hide the **Users** and **Manage Users** links from the `user` role.
+  - `codebase.md` describes the platform cross-tenant scope (§2, §13, §16) and adds the foundational principle "Reuse Before You Add" (§1).
+
+  <Note>
+  **Upgrading:** replace `framework/` as usual, then copy the two view changes into your `app/Views/`. No migration is needed. If you skip the view changes, the dashboard still works without the Tenant column. See [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+  </Note>
+
+  <Warning>
+  `platform` is now a highly privileged role: anyone with it can see the email, name, role and login activity of every user on the site. Give it only to the people who run the platform.
+  </Warning>
+</Update>
+
+<Update label="30 September 2026" description="v2.1.0" tags={["Users", "Signup", "Migration"]}>
   ## Tenant-per-signup and Terms & Conditions acceptance
 
   FrankPHP 2.1.0 changes what a new sign-up means. **Every verified sign-up now creates its own tenant, and the person signing up becomes that tenant's `owner`.** Before this release every sign-up joined tenant 1 as a plain `user`, which blocked real self-service sign-ups on live apps.

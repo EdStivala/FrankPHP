@@ -1,0 +1,48 @@
+---
+title: "Tenant Isolation and the Platform Role"
+description: "How FrankPHP keeps each tenant's data separate, the one deliberate exception for the platform role, and the rules that keep it safe."
+---
+
+# Tenant Isolation and the Platform Role
+
+FrankPHP keeps each tenant's data separate, at two levels:
+
+- **On every request,** the tenant in the URL must match the logged-in user's tenant.
+- **On every database query,** results are filtered to a single tenant.
+
+---
+
+## The one deliberate exception
+
+**The Users dashboard for the `platform` role** shows users from all tenants. It is the only place in FrankPHP where one user sees another tenant's data. Three rules keep it safe.
+
+<Steps>
+  <Step title="It depends only on who is logged in">
+    The logged-in user's role decides whether the all-tenants view is shown. No URL, query string or form value can switch a non-platform user into it.
+  </Step>
+  <Step title="It still uses single-tenant queries">
+    FrankPHP builds the list one tenant at a time. It never runs a query across the whole users table.
+  </Step>
+  <Step title="The access check is on the server">
+    If someone with the `user` role visits `/tenant/{id}/users`, FrankPHP sends them back to the dashboard with `?error=forbidden`. Hiding the menu link is only a convenience. If you customise your navigation, don't rely on hidden links for security.
+  </Step>
+</Steps>
+
+<Warning>
+**Treat `platform` as a highly privileged role.** Anyone with it can see the email address, name, role and login activity of every user on the site. Give it only to the people who run the platform.
+</Warning>
+
+---
+
+## Everywhere else
+
+Outside the Users dashboard, a platform user works within their own tenant like any other role. Cross-tenant access to other pages, for example Organisation Settings, is planned but **not available yet**.
+
+---
+
+## Related
+
+- [Roles and the Users Dashboard](/users/users-dashboard): what each role sees on the dashboard.
+- [Tenants, Ownership & Roles](/users/tenants-and-roles): what each role means.
+
+Added in [v2.2.0](/changelog#19-october-2026).

@@ -53,9 +53,11 @@
               "users/overview",
               "users/signup-flow",
               "users/tenants-and-roles",
+              "users/users-dashboard",
               "users/terms-acceptance",
               "users/customising-signup",
-              "users/upgrading-to-2-1-0"
+              "users/upgrading-to-2-1-0",
+              "users/upgrading-to-2-2-0"
             ]
           },
           {
@@ -68,7 +70,8 @@
             "group": "ARCHITECTURE",
             "pages": [
               "architecture/environment-configuration",
-              "architecture/dependency-injection"
+              "architecture/dependency-injection",
+              "architecture/tenant-isolation"
             ]
           }
         ]

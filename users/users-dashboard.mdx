@@ -1,0 +1,65 @@
+---
+title: "Roles and the Users Dashboard"
+description: "What the Users dashboard shows, and which users each role (platform, owner, admin, user) can see on it."
+---
+
+# Roles and the Users Dashboard
+
+The **Users** dashboard lists the people in your app with their email, name, role, join date and last login. Above the list are four summary cards: **Total Users**, **Active Users**, **Never Logged In** and **Inactive 30+ Days**.
+
+<Note>
+*Changed in v2.2.0:* platform users now see every tenant. Before v2.2.0, everyone who could open the dashboard saw their own tenant only.
+</Note>
+
+---
+
+## What each role sees
+
+| Role | Sees the Users menu option | Users listed |
+|---|:---:|---|
+| `platform` | Yes | **Every user in every tenant**, with an extra **Tenant** column. The page subtitle reads "All tenants". |
+| `owner` | Yes | Users in their own tenant only |
+| `admin` | Yes | Users in their own tenant only (same as owner) |
+| `user` | No | No access |
+
+- **The summary cards always cover the same users as the list.** For a platform user, that means totals across all tenants.
+- **`owner` and `admin` behave identically** on this page.
+- **The page lives at** `/tenant/{tenant_id}/users`.
+
+---
+
+## Where the Users option appears
+
+The starter app links to the dashboard from two places:
+
+- the sidebar (**Users**)
+- the organisation menu in the header (**Manage Users**)
+
+Both links are hidden from the `user` role.
+
+<Note>
+*Changed in v2.2.0:* before this release the `user` role could see both links but was turned away on click. Upgraded apps need a small view change to hide them. See [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+</Note>
+
+<Warning>
+Hiding the links is a convenience, not a security control. The server refuses the `user` role whether or not the link is visible. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).
+</Warning>
+
+---
+
+## Not available yet
+
+These are planned and are **not** part of FrankPHP today:
+
+- **Editing or removing users** from the dashboard. It is read-only.
+- **Filtering or searching the user list by tenant.** A platform user sees one combined list.
+- **Cross-tenant access anywhere else.** The Users dashboard is the only place a platform user sees other tenants. Pages such as Organisation Settings still work within the platform user's own tenant.
+
+---
+
+## Next
+
+- [Tenants, Ownership & Roles](/users/tenants-and-roles): what each role means and can do.
+- [Tenant Isolation and the Platform Role](/architecture/tenant-isolation): how the all-tenants view stays safe.
+
+Changed in [v2.2.0](/changelog#19-october-2026).
