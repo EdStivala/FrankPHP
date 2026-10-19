@@ -47,13 +47,30 @@ Hiding the links is a convenience, not a security control. The server refuses th
 
 ---
 
+## Giving someone the platform role
+
+No user has the `platform` role by default. The seed accounts are an `owner` and a `user`, and sign-ups become `owner`. There's no screen for changing roles yet, so set it in the database:
+
+```sql
+UPDATE users SET role = 'platform' WHERE email = 'you@yourdomain.com';
+```
+
+The user keeps their own tenant. They still log in to it as normal, and the Users dashboard then shows every tenant.
+
+<Warning>
+Give `platform` only to the people who run the site. Anyone with it can see the email, name, role and login activity of every user. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).
+</Warning>
+
+---
+
 ## Not available yet
 
 These are planned and are **not** part of FrankPHP today:
 
+- **Changing a user's role** from inside the app.
 - **Editing or removing users** from the dashboard. It is read-only.
 - **Filtering or searching the user list by tenant.** A platform user sees one combined list.
-- **Cross-tenant access anywhere else.** The Users dashboard is the only place a platform user sees other tenants. Pages such as Organisation Settings still work within the platform user's own tenant.
+- **Cross-tenant access anywhere else.** The Users dashboard is the only place a platform user sees other tenants. Everywhere else a platform user is limited to their own tenant, and it can't open Organisation Settings, which admits only `owner` and `admin`.
 
 ---
 

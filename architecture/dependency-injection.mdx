@@ -98,7 +98,7 @@ app/public/index.php
               └── singleton: SignupTenantResolver        ← default CreateTenantForSignup, gets TenantService
               └── singleton: SignupService              ← gets the EmailService + SignupTenantResolver + $config['signup']
               └── singleton: UserService                ← gets the User model
-              └── singleton: UserManagementService       ← gets the User model
+              └── singleton: UserManagementService       ← gets the User + Tenant models
               └── bind: AuthController           ← gets PasswordResetService + UserService
               └── bind: SignupController         ← gets SignupService + UserService
               └── bind: UserManagementController ← gets UserManagementService + $config

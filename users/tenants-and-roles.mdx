@@ -15,7 +15,7 @@ description: "How FrankPHP creates and names a tenant for every sign-up, and wha
 
 ## How the tenant is named
 
-There's no "company name" field on the sign-up form. FrankPHP names the tenant from the email address, and the owner can change the name later in **Tenant Settings**.
+There's no "company name" field on the sign-up form. FrankPHP names the tenant from the email address, and the owner can change the name later in **Organisation Settings**.
 
 | Sign-up email | Tenant name | Tenant slug |
 |---|---|---|
@@ -41,7 +41,7 @@ Two colleagues who sign up separately get **two separate tenants**. Letting some
 | `owner` | Created the tenant at sign-up. Can manage tenant settings and see the tenant's users. |
 | `admin` | Same management access as owner. |
 | `user` | Standard member of the tenant. Cannot see the Users dashboard. |
-| `platform` | The site operator, above tenant owners. Sees users across all tenants on the Users dashboard. Elsewhere it works within one tenant like any other role. |
+| `platform` | The site operator, above tenant owners. Sees users across all tenants on the Users dashboard. Everywhere else it is limited to its own tenant, and it can't open Organisation Settings. |
 
 ### What each role can do today
 
@@ -50,10 +50,10 @@ Two colleagues who sign up separately get **two separate tenants**. Letting some
 | Tenant dashboard and your own pages | ✓ | ✓ | ✓ | ✓ |
 | Account Settings (your own profile) | ✓ | ✓ | ✓ | ✓ |
 | Users dashboard (`/tenant/{id}/users`) | Own tenant | Own tenant | | All tenants |
-| Organisation Settings (Tenant Settings) | ✓ | ✓ | | |
+| Organisation Settings | ✓ | ✓ | | |
 
 <Note>
-*Changed in v2.2.0:* a platform user now sees users from every tenant on the Users dashboard. See [Roles and the Users Dashboard](/users/users-dashboard). Everywhere else, a platform user is still limited to their own tenant. Wider cross-tenant access, for example to Organisation Settings, and finer-grained privileges for all roles will come with FrankPHP's privilege framework.
+*Changed in v2.2.0:* a platform user now sees users from every tenant on the Users dashboard. See [Roles and the Users Dashboard](/users/users-dashboard). That is the only extra access `platform` has. Everywhere else a platform user is limited to their own tenant. Like `user`, it can't open Organisation Settings, which admits only `owner` and `admin`. Wider platform access, and finer-grained privileges for all roles, will come with FrankPHP's privilege framework.
 </Note>
 
 <Warning>

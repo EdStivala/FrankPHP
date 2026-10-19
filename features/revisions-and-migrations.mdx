@@ -115,6 +115,19 @@ For the step-by-step upgrade, see [Upgrading to 2.1.0](/users/upgrading-to-2-1-0
 
 ---
 
+## The v2.2.0 example
+
+v2.2.0 has no database migration, but it shows the other kind of upgrade step: **changes to the starter app**. The new Tenant column on the Users dashboard and the hidden Users links live in `app/Views/`. A framework update never touches `app/`, so these changes can't reach an existing install on their own.
+
+- **Fresh installs** get the new views in the release's Source code zip.
+- **Existing installs** copy the view changes in by hand. The release notes give the exact snippets.
+- **Nothing breaks if you skip it.** The framework keeps working with the old views. You just don't get the Tenant column, and the `user` role still sees links it can't use.
+- **Notes ship with the release.** They're in `framework/Versions/FrankPHP_v2.2.0_upgrade_notes.md`.
+
+For the step-by-step upgrade, see [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+
+---
+
 ## Recommended upgrade workflow
 
 Follow this workflow for each FrankPHP release.
@@ -146,8 +159,9 @@ Ask what kind of release this is.
 | Schema-affecting | `framework/sql/schema.core.sql`, framework tables, indexes |
 | Data-affecting | existing values must be transformed, normalised, or reviewed |
 | Application-contract affecting | `framework/codebase.md` rules that AI agents must now follow |
+| Starter-app affecting | changes to files under `app/` that existing installs copy in by hand |
 
-v1.3.0 is a framework hygiene release, but it is also schema- and data-relevant because it formalises timestamp storage expectations and migration handling for MySQL timestamp columns. v2.0.0 is application-contract affecting in a much larger way — the framework/application ownership boundary itself changed.
+v1.3.0 is a framework hygiene release, but it is also schema- and data-relevant because it formalises timestamp storage expectations and migration handling for MySQL timestamp columns. v2.0.0 is application-contract affecting in a much larger way — the framework/application ownership boundary itself changed. v2.2.0 is framework-behaviour and starter-app affecting, with no schema change.
 
 ---
 

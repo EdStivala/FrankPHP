@@ -63,8 +63,9 @@ flowchart LR
 This section will grow as FrankPHP's **privilege framework** is built. The following are planned and are **not** part of FrankPHP today. Don't build on them yet.
 
 - **Finer-grained privileges:** per-role permissions beyond the current `owner` / `admin` / `user` checks.
-- **Wider cross-tenant `platform` access:** since v2.2.0 a platform user sees every tenant's users on the Users dashboard, but still can't open other tenants' pages, such as Organisation Settings.
+- **Wider cross-tenant `platform` access:** since v2.2.0 a platform user sees every tenant's users on the Users dashboard. It still can't open other tenants' pages, or Organisation Settings in any tenant.
 - **Editing or removing users** from the Users dashboard, and **filtering or searching** the user list by tenant.
+- **Changing a user's role from inside the app.** Today it's a database change. See [Giving someone the platform role](/users/users-dashboard#giving-someone-the-platform-role).
 - **Invite a user / join an existing tenant:** today, two colleagues who sign up separately get two separate tenants.
 - **Single sign-on (SSO).**
 - **Re-accepting terms** when your terms version changes.

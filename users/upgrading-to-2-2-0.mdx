@@ -7,6 +7,17 @@ description: "Upgrade an existing FrankPHP install to v2.2.0: replace framework/
 
 FrankPHP 2.2.0 lets platform users see every tenant's users on the Users dashboard, and hides the Users links from the `user` role. There are **no database or route changes**. Follow these steps on each existing install. New installs need none of this.
 
+<Note>
+**Coming from 2.1.0 or earlier?** Check that `app/public/index.php` uses these two lines before you replace `framework/`. Since v2.1.1 the framework stops with an error if they're wrong.
+
+```php
+define('APP_BASE_DIR', dirname(__DIR__, 2));
+require_once APP_BASE_DIR . '/framework/bootstrap.php';
+```
+
+Coming from 2.0.x, also follow [Upgrading to 2.1.0](/users/upgrading-to-2-1-0) first. It includes a database migration.
+</Note>
+
 ---
 
 <Steps>

@@ -53,7 +53,7 @@ sequenceDiagram
 - **Rate limiting.** Sign-up requests are limited per IP address, to 5 per hour by default.
 - **All or nothing.** The tenant and the user are created together. If anything fails, neither is created and the user sees *"Account creation failed. Please try again."*
 - **Site-owner alerts.** The address in `MAIL_SITE_ADMIN` gets an email when a code is requested and another when an account is created. The second email names the new tenant. See [Getting Email Up and Running](/getting-started/getting-email-up-and-running).
-- **Last login is recorded.** The automatic login after sign-up counts as the user's first login, so they don't show as "never logged in" on the User Management dashboard.
+- **Last login is recorded.** The automatic login after sign-up counts as the user's first login, so they don't show as "never logged in" on the [Users dashboard](/users/users-dashboard).
 
 ---
 

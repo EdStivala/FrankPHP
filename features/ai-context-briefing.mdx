@@ -41,6 +41,7 @@ The briefing is split across two files for the same reason `framework/` and `app
 - authentication and tenant resolution
 - CSS conventions and design tokens
 - what the framework deliberately does not include
+- the foundational principle **Reuse Before You Add** (see below)
 
 This file is versioned with the framework — it's replaced wholesale every time `framework/` is updated. It is read by your AI assistant but never modified by you or your AI — it describes FrankPHP, not your application.
 
@@ -49,6 +50,17 @@ The framework's deliberate simplicity makes this possible. Because FrankPHP has 
 <Note>
 `framework/codebase.md` is updated by the framework author with each version release. It ships inside `framework/` and should not be edited.
 </Note>
+
+#### Reuse Before You Add
+
+Since v2.2.0, `codebase.md` §1 opens with a foundational principle that applies to **your application code** as well as the framework, in every layer: controllers, services, models and middleware. An AI assistant working from the briefing should:
+
+- **reuse an existing method** before adding a new one, even if the call is shaped a little differently
+- **write new methods as general operations**, not single-use helpers
+- **say which existing methods each change reuses**, and why any new method is needed
+- **remove methods a change leaves unused**, and any that duplicate an existing one
+
+If your assistant proposes a new method without saying why an existing one won't do, ask it to check first.
 
 ### `MYAPP.md` — the application layer
 
