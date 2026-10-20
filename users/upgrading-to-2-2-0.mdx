@@ -49,6 +49,8 @@ Coming from 2.0.x, also follow [Upgrading to 2.1.0](/users/upgrading-to-2-1-0) f
 
     <Note>
     If you skip this step, the page still works. Platform users see every tenant's users, but without the Tenant column. The `user` role still sees the links, and is refused on click.
+
+    If you copy in the `management-dashboard.php` change and your app overrides `UserManagementController`, also do the override step below. Otherwise the page gives undefined-variable warnings.
     </Note>
   </Step>
   <Step title="Only if your app builds UserManagementService itself">
@@ -60,6 +62,15 @@ Coming from 2.0.x, also follow [Upgrading to 2.1.0](/users/upgrading-to-2-1-0) f
         tenantModel: new \Frank\Models\Tenant(),
     );
     ```
+  </Step>
+  <Step title="Only if your app overrides UserManagementController">
+    If your `app/bootstrap.php` replaces `UserManagementController` using `$container->override()`, and your subclass defines its own `index()`, the framework's `index()` no longer runs. The new `crossTenant` value then never reaches the view. Add this line to the view params your `index()` passes. It's copied from the framework's `UserManagementController.php`, line 57, where `$result` is what `getUserDashboard()` returns:
+
+    ```php
+    'crossTenant'        => $result->get('crossTenant', false),
+    ```
+
+    This is the only view param added in 2.2.0. Without it, the updated `management-dashboard.php` reads an undefined `$crossTenant`. PHP gives undefined-variable warnings, and platform users see the current tenant's name instead of "All tenants", with no Tenant column.
   </Step>
 </Steps>
 
