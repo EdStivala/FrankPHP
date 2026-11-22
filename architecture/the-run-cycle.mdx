@@ -1,0 +1,17 @@
+---
+title: "The Run Cycle"
+description: "What FrankPHP does, step by step, from the moment a request arrives to the moment a page is rendered."
+---
+
+This page follows one request through FrankPHP: a visit to the Hello page you build in [Build your first page](/cookbooks/build-your-first-page), at `/tenant/1/hello`.
+
+1. `app/public/index.php` — the one file the web server runs for every request — loads `framework/bootstrap.php`, which immediately calls `Env::load()` to read your settings from `app/.env` before anything else runs
+2. FrankPHP connects to the database using those settings. It then registers its shared services (the "container bindings": pieces such as the email sender that any part of the code can ask for) and its own routes, the list of web addresses it knows how to handle. As its final step, `framework/bootstrap.php` loads `app/bootstrap.php`, which adds your application's own routes and services, and hands the router back to `index.php`
+3. `app/public/index.php` starts the session with `Session::start()`, so FrankPHP can tell whether the visitor is signed in
+4. The router — the part of FrankPHP that decides which code handles each web address — looks up `/tenant/1/hello` in the list of routes registered in step 2, finds the one you added, and so knows to run `HelloController@index`
+5. Your route lists two middleware: checks that run, in order, before your own code is allowed to run. **TenantMiddleware** runs first — it reads `1` from the address, loads that tenant from the database, and attaches it to the request so your code can use it
+6. **AuthMiddleware** runs second — it checks that someone is signed in, loads their user record, confirms they belong to tenant 1, and attaches them to the request. If nobody is signed in, it sends the visitor to the sign-in screen instead
+7. `HelloController@index` runs. A controller is the part of your code that handles a request: `HelloController` is the file and `index` is the function inside it. It receives the request with `$request->tenant` and `$request->user` already filled in
+8. The controller passes the tenant and user to the view — the file that holds the page's HTML — and the view is placed inside `app-main.php`, the layout: the shared frame, with the top bar, that wraps every page a signed-in person sees
+
+No magic. Every step is explicit and traceable. That's the FrankPHP way.

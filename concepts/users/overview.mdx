@@ -1,0 +1,70 @@
+---
+title: "Users Overview"
+description: "How FrankPHP thinks about tenants, users and roles, and where to read about each part."
+---
+
+Every FrankPHP app is multi-tenant from day one. This section explains how people get into your app, which tenant they belong to, and what their role lets them do.
+
+---
+
+## The three ideas you need
+
+- **Tenant:** one customer account in your app — a business, a team or a personal workspace. Each tenant's data is kept apart, and every tenant page has the tenant's number in its address (`/tenant/{tenant_id}/...`).
+- **User:** a person who signs in. Every user belongs to exactly one tenant, and an email address can belong to only one user.
+- **Role:** what a user can do inside their tenant: `owner`, `user`, or `platform` for the people who run the site.
+
+People sign in with a 6-digit code sent to their email, or with Google if you've turned it on. There are no passwords. Someone signing in with a new address gets their own new tenant, and becomes its owner.
+
+---
+
+## The roles
+
+| Role | Who has it | What the starter app lets them do |
+|------|------------|-----------------------------------|
+| `owner` | The person a tenant was created for | Tenant Settings, the Users screen, invite people to join their tenant, edit or remove its users, delete the tenant |
+| `user` | Everyone else in the tenant, usually invited by the owner | Their own User Settings, and deleting their own account |
+| `platform` | You, and anyone else who runs the site | The Users screen for every tenant, edit or delete any tenant, invite someone to a brand-new tenant, and sign in as a tenant's owner to help them |
+
+<Note>
+The framework supplies the operations, such as deleting a user or changing a role. **Who may use them, and on which screen, is decided by your app.** The table shows the starter app's rules, which you can change in your own `app/`.
+</Note>
+
+---
+
+## What's in this section
+
+<CardGroup cols={2}>
+  <Card title="Accessing The Site" icon="user-plus" href="/concepts/users/signup-flow">
+    <span className="frank-chip">Docs</span>
+    One screen, an emailed code, and a new tenant for every new address.
+  </Card>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    How new tenants are named, and what each role means.
+  </Card>
+  <Card title="Terms & Conditions Acceptance" icon="file-signature" href="/concepts/users/terms-acceptance">
+    <span className="frank-chip">Docs</span>
+    An optional terms step for new sign-ups, recorded with the time and version.
+  </Card>
+  <Card title="Roles and the Users Dashboard" icon="users" href="/concepts/users/users-dashboard">
+    <span className="frank-chip">Docs</span>
+    Which users each role can see, including the platform all-tenants view.
+  </Card>
+  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+    <span className="frank-chip">Cookbook</span>
+    Change where new users go, and restyle the sign-in screens.
+  </Card>
+</CardGroup>
+
+---
+
+## Not available yet
+
+<Warning>
+These are not part of FrankPHP 3.0. Don't build on them yet.
+
+- **Microsoft sign-in.** Its settings exist in `app/env.example`, but they turn nothing on. It's planned for a future release.
+- **A screen for changing roles.** The framework can change a user's role, but the starter app has no screen for it.
+- **Re-accepting terms** when your terms version changes, and **a consent history** of every acceptance.
+- **Finer-grained privileges,** such as per-feature permissions or limits tied to a subscription.
+</Warning>

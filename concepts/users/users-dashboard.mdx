@@ -1,0 +1,100 @@
+---
+title: "Roles and the Users Dashboard"
+description: "What the Users screen shows, which users each role can see on it, and what they can do from it."
+---
+
+The **Users** screen, at `/tenant/{tenant_id}/users`, lists the people in your app and lets the right people invite and edit them.
+
+<Note>
+The Users screen belongs to **your app**, not the framework: it's in `app/`, so you can change who sees it and what it shows. This page describes the starter app's version.
+</Note>
+
+---
+
+## What's on the screen
+
+| Part | What it shows |
+|---|---|
+| **Your details** | Your own email, tenant and last login. You aren't repeated in the list below. |
+| **Total Users** | How many users the screen covers, with the **Invite** button |
+| **Active Users** | The percentage who have signed in at least once |
+| **Never Logged In** | How many have never signed in |
+| **Inactive 30+ Days** | How many signed in before, but not in the last 30 days |
+| **All Users** | Everyone else: email, name, role, when they joined, and their last login, with an edit button on each row |
+
+The summary cards always count the same people as the list, plus you.
+
+---
+
+## What each role sees
+
+| Role | Sees the Users screen | Users listed |
+|---|:---:|---|
+| `platform` | Yes | **Every user in every tenant**, with an extra **Tenant** column. The subtitle reads "All tenants". |
+| `owner` | Yes | The users in their own tenant |
+| `user` | No | — |
+
+---
+
+## What you can do from it
+
+- **Invite.** An owner invites someone to join their tenant. A platform user sees **Invite a new tenant** instead, and the person gets a brand-new tenant of their own. See [Joining an existing tenant](/concepts/users/tenants-and-roles#joining-an-existing-tenant).
+- **Edit a user.** The edit button opens **Edit User**, where the user's name can be changed and the user can be deleted.
+- **Edit a tenant** (platform only). On an owner's row, the edit button opens **Edit Tenant** instead: change the tenant's details, delete it, or sign in as its owner to help them.
+
+---
+
+## Where the links appear
+
+The starter app links to the Users screen from two places:
+
+- the sidebar (**Users**)
+- the tenant menu in the top bar (**Manage Users**)
+
+Both are hidden from the `user` role.
+
+<Warning>
+Hiding the links is a convenience, not a security control. The server turns the `user` role away whether or not the link is visible. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).
+</Warning>
+
+---
+
+## Giving someone the platform role
+
+Nobody has the `platform` role to begin with, and no screen can give it. Set it in the database:
+
+```sql
+UPDATE users SET role = 'platform' WHERE email = 'you@yourdomain.com';
+```
+
+The person keeps their own tenant and signs in to it as normal. The Users screen then shows every tenant.
+
+<Warning>
+Give `platform` only to the people who run the site. Anyone with it can see the email, name, role and login activity of every user, and can sign in as any tenant's owner. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).
+</Warning>
+
+---
+
+## Not available yet
+
+<Warning>
+These are not part of FrankPHP 3.0. Don't build on them yet.
+
+- **Changing a user's role** from the screen. The framework can do it, but the starter app has no control for it.
+- **Filtering or searching the list,** for example by tenant. A platform user sees one combined list.
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    What each role means, and what it can do.
+  </Card>
+  <Card title="Tenant Isolation and the Platform Role" icon="shield-halved" href="/architecture/tenant-isolation">
+    <span className="frank-chip">Docs</span>
+    How the all-tenants view stays safe.
+  </Card>
+</CardGroup>

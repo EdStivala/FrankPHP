@@ -1,48 +1,63 @@
 ---
 title: "Tenant Isolation and the Platform Role"
-description: "How FrankPHP keeps each tenant's data separate, the one deliberate exception for the platform role, and the rules that keep it safe."
+description: "How FrankPHP keeps each tenant's data separate, what the platform role can do across tenants, and the rules that keep it safe."
 ---
-
-# Tenant Isolation and the Platform Role
 
 FrankPHP keeps each tenant's data separate, at two levels:
 
-- **On every request,** the tenant in the URL must match the logged-in user's tenant.
-- **On every database query,** results are filtered to a single tenant.
+- **On every request,** the tenant in the address must match the signed-in person's tenant. AuthMiddleware turns anyone else away. See [Middleware](/concepts/middleware).
+- **On every database query,** the inherited model methods — `find()`, `all()`, `where()`, `delete()` — need a tenant, and only ever touch that tenant's rows.
 
 ---
 
-## The one deliberate exception
+## What the platform role can do across tenants
 
-**The Users dashboard for the `platform` role** shows users from all tenants. It is the only place in FrankPHP where one user sees another tenant's data. Three rules keep it safe.
+The `platform` role is for the people who run the site. In the starter app, it's the only role that reaches beyond its own tenant:
+
+| Power | Where |
+|---|---|
+| **See every tenant's users** | The Users screen, with a Tenant column |
+| **Edit or delete any tenant and its users** | **Edit User** and **Edit Tenant**, opened from the Users screen |
+| **Sign in as a tenant's owner,** to help them | **Capture Tenant** on Edit Tenant. While it's on, the top bar turns red and shows *Acting as Tenant Owner*; **Release Tenant** switches back. |
+
+---
+
+## The rules that keep it safe
 
 <Steps>
-  <Step title="It depends only on who is logged in">
-    The logged-in user's role decides whether the all-tenants view is shown. No URL, query string or form value can switch a non-platform user into it.
+  <Step title="Only the signed-in person's role decides">
+    Whether someone gets platform powers depends only on the role of the person signed in, read on the server. Nothing in an address, query string or form can switch them on for anyone else.
   </Step>
-  <Step title="It still uses single-tenant queries">
-    FrankPHP builds the list one tenant at a time. It never runs a query across the whole users table.
+  <Step title="It still works one tenant at a time">
+    Even the all-tenants list is built tenant by tenant, using the same tenant-locked model methods. FrankPHP never runs a query across every tenant at once.
   </Step>
-  <Step title="The access check is on the server">
-    If someone with the `user` role visits `/tenant/{id}/users`, FrankPHP sends them back to the dashboard with `?error=forbidden`. Hiding the menu link is only a convenience. If you customise your navigation, don't rely on hidden links for security.
+  <Step title="Every check happens on the server">
+    Someone with the `user` role who visits `/tenant/{id}/users` is sent back to their dashboard with `?error=forbidden`. Hiding the menu links is only a convenience. If you change your navigation, never rely on a hidden link for security.
+  </Step>
+  <Step title="Signing in as an owner is guarded">
+    Capture Tenant and Release Tenant are form posts carrying the security token, and each gives the session a new id. Before switching back, FrankPHP checks the person is still a platform user — if not, their session ends.
   </Step>
 </Steps>
 
 <Warning>
-**Treat `platform` as a highly privileged role.** Anyone with it can see the email address, name, role and login activity of every user on the site. Give it only to the people who run the platform.
+**Treat `platform` as a highly privileged role.** Anyone with it can see the email, name, role and login activity of every user, change or delete any tenant, and sign in as any tenant's owner. **No record is kept** of signing in as an owner. Give the role only to the people who run the site.
 </Warning>
 
----
-
-## Everywhere else
-
-Outside the Users dashboard, a platform user is limited to their own tenant. It also can't open Organisation Settings, which admits only `owner` and `admin`. Wider platform access is planned but **not available yet**.
+<Note>
+The framework supplies the operations and the sign-in-as-owner routes. The Users, Edit User and Edit Tenant screens belong to the starter app, so who sees them is your app's decision. See [Revisions and Migrations](/concepts/revisions-and-migrations).
+</Note>
 
 ---
 
-## Related
+## Next
 
-- [Roles and the Users Dashboard](/users/users-dashboard): what each role sees on the dashboard.
-- [Tenants, Ownership & Roles](/users/tenants-and-roles): what each role means.
-
-Added in [v2.2.0](/changelog#19-october-2026).
+<CardGroup cols={2}>
+  <Card title="Roles and the Users Dashboard" icon="users" href="/concepts/users/users-dashboard">
+    <span className="frank-chip">Docs</span>
+    What each role sees on the Users screen, and how to give someone the platform role.
+  </Card>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    What each role means, and what it can do.
+  </Card>
+</CardGroup>

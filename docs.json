@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "almond",
   "name": "FrankPHP",
   "favicon": "https://edstivala.co.uk/assets/img/frank/frank_icon.svg",
   "logo": {
@@ -18,73 +18,202 @@
     "light": "#818cf8",
     "dark": "#4f46e5"
   },
+  "navbar": {
+    "links": [
+      {
+        "label": "Talk to us",
+        "href": "https://n3wmedia.com/apps/support"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get started",
+      "href": "/getting-started/get-frankphp-running"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/EdStivala/frankphp-framework"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Start Here/Glossary",
-        "icon": "house",
+        "tab": "Docs",
+        "icon": "book-open",
         "groups": [
           {
             "group": " ",
             "pages": [
-              "getting-started/meet-frank"
+              {
+                "group": "Home",
+                "icon": "house",
+                "root": "home",
+                "expanded": true,
+                "pages": [
+                  "getting-started/meet-frank",
+                  {
+                    "group": "Get started",
+                    "expanded": true,
+                    "pages": [
+                      "getting-started/get-frankphp-running",
+                      "getting-started/step-1",
+                      "getting-started/step-2",
+                      "getting-started/step-3",
+                      "getting-started/step-4",
+                      "getting-started/step-5",
+                      "getting-started/step-6",
+                      "getting-started/step-7",
+                      "getting-started/step-8",
+                      "getting-started/working-with-myapp",
+                      "getting-started/getting-email-up-and-running",
+                      "getting-started/next-steps"
+                    ]
+                  },
+                  {
+                    "group": "Concepts",
+                    "expanded": false,
+                    "pages": [
+                      "concepts/middleware",
+                      {
+                        "group": "Users",
+                        "expanded": false,
+                        "pages": [
+                          "concepts/users/overview",
+                          "concepts/users/signup-flow",
+                          "concepts/users/tenants-and-roles",
+                          "concepts/users/users-dashboard",
+                          "concepts/users/terms-acceptance"
+                        ]
+                      },
+                      {
+                        "group": "Releases and versions",
+                        "expanded": false,
+                        "pages": [
+                          "concepts/revisions-and-migrations"
+                        ]
+                      },
+                      "concepts/ai-context-briefing"
+                    ]
+                  },
+                  {
+                    "group": "Architecture",
+                    "expanded": false,
+                    "pages": [
+                      "architecture/the-run-cycle",
+                      "architecture/environment-configuration",
+                      "architecture/dependency-injection",
+                      "architecture/tenant-isolation"
+                    ]
+                  },
+                  {
+                    "group": "Upgrade guides",
+                    "expanded": false,
+                    "pages": [
+                      "upgrading/upgrading-to-2-1-0",
+                      "upgrading/upgrading-to-2-2-0"
+                    ]
+                  }
+                ]
+              },
+              "changelog",
+              "github"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/index",
+              "reference/clock"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Learn",
+        "icon": "graduation-cap",
+        "menu": [
+          {
+            "item": "Learn",
+            "icon": "graduation-cap",
+            "description": "Tutorials, from PHP and HTML basics to your first Frank app.",
+            "pages": [
+              "learn/index"
             ]
           },
           {
-            "group": "GETTING STARTED",
+            "item": "Cookbooks",
+            "icon": "utensils",
+            "description": "Step-by-step guides to get one specific thing done.",
             "pages": [
-              "getting-started/get-frankphp-running-rewritten",
-              "getting-started/working-with-myapp",
-	          "getting-started/getting-email-up-and-running"
-            ]
-          },
-          {
-            "group": "FEATURES",
-            "pages": [
-              "features/ai-context-briefing",
-              "features/version-management",
-              "features/publishing-a-release",
-              "features/revisions-and-migrations"
-            ]
-          },
-          {
-            "group": "USERS",
-            "pages": [
-              "users/overview",
-              "users/signup-flow",
-              "users/tenants-and-roles",
-              "users/users-dashboard",
-              "users/terms-acceptance",
-              "users/customising-signup",
-              "users/upgrading-to-2-1-0",
-              "users/upgrading-to-2-2-0"
-            ]
-          },
-          {
-            "group": "COOKBOOK",
-            "pages": [
-              "cookbook/using-clock-in-your-apps"
-            ]
-          },
-          {
-            "group": "ARCHITECTURE",
-            "pages": [
-              "architecture/environment-configuration",
-              "architecture/dependency-injection",
-              "architecture/tenant-isolation"
+              "cookbooks/build-your-first-page",
+              "cookbooks/add-a-form",
+              "cookbooks/using-clock-in-your-apps",
+              "cookbooks/customising-signup"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Changelog",
-          "icon": "list",
-          "href": "/changelog"
-        }
-      ]
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/home"
+    },
+    {
+      "source": "/getting-started/get-frankphp-running-rewritten",
+      "destination": "/getting-started/get-frankphp-running"
+    },
+    {
+      "source": "/features/ai-context-briefing",
+      "destination": "/concepts/ai-context-briefing"
+    },
+    {
+      "source": "/features/revisions-and-migrations",
+      "destination": "/concepts/revisions-and-migrations"
+    },
+    {
+      "source": "/cookbook/using-clock-in-your-apps",
+      "destination": "/cookbooks/using-clock-in-your-apps"
+    },
+    {
+      "source": "/users/customising-signup",
+      "destination": "/cookbooks/customising-signup"
+    },
+    {
+      "source": "/users/upgrading-to-2-1-0",
+      "destination": "/upgrading/upgrading-to-2-1-0"
+    },
+    {
+      "source": "/users/upgrading-to-2-2-0",
+      "destination": "/upgrading/upgrading-to-2-2-0"
+    },
+    {
+      "source": "/users/overview",
+      "destination": "/concepts/users/overview"
+    },
+    {
+      "source": "/users/signup-flow",
+      "destination": "/concepts/users/signup-flow"
+    },
+    {
+      "source": "/users/tenants-and-roles",
+      "destination": "/concepts/users/tenants-and-roles"
+    },
+    {
+      "source": "/users/users-dashboard",
+      "destination": "/concepts/users/users-dashboard"
+    },
+    {
+      "source": "/users/terms-acceptance",
+      "destination": "/concepts/users/terms-acceptance"
     }
-  }
+  ]
 }

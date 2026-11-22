@@ -1,0 +1,108 @@
+---
+title: "Build your first page"
+description: "Build a simple protected page that only a signed-in user can see: a route, a controller and a view."
+---
+
+FrankPHP is running. Now prove it properly by building something: a simple protected page that only a signed-in user can see. This touches every layer of the framework in the most straightforward way possible.
+
+---
+
+## Before you start
+
+You'll need FrankPHP installed and to be signed in. If you haven't done that yet, work through [Get FrankPHP Running](/getting-started/get-frankphp-running) first.
+
+---
+
+## Build the page, step by step
+
+<Steps>
+  <Step title="Register the route">
+    Open `app/bootstrap.php` and find the route definitions. Add one new line inside the existing authenticated routes block:
+
+    ```php
+    $router->add('GET', '/tenant/{tenant_id}/hello', 'HelloController@index', [$tm, $auth]);
+    ```
+
+    This tells the router: when a GET request comes in for this URL, run `HelloController@index`, and run the Tenant and Auth middleware first.
+  </Step>
+
+  <Step title="Create the controller">
+    Create a new file: `app/Controllers/HelloController.php`
+
+    ```php
+    <?php
+
+    namespace App\Controllers;
+
+    use Frank\Core\BaseController;
+    use Frank\Core\Request;
+    use Frank\Core\Response;
+
+    class HelloController extends BaseController
+    {
+        public function index(Request $request, array $params): mixed
+        {
+            $tenant = $request->tenant;
+            $user   = $request->user;
+
+            return $this->view('hello/index', [
+                'title'  => 'Hello, FrankPHP',
+                'tenant' => $tenant,
+                'user'   => $user,
+            ]);
+        }
+    }
+    ```
+  </Step>
+
+  <Step title="Create the view">
+    Create a new file: `app/Views/hello/index.php`
+
+    ```php
+    <?php
+    $title = $title ?? 'Hello';
+    ob_start();
+    ?>
+
+    <div class="card">
+        <div class="card-header-modern">
+            <h5>Hello, FrankPHP</h5>
+        </div>
+        <div class="card-body p-3">
+            <p>You are logged in as <strong><?= htmlspecialchars($user['name']) ?></strong>.</p>
+            <p>Your tenant is <strong><?= htmlspecialchars($tenant['name']) ?></strong>.</p>
+            <p>If you can read this, FrankPHP is working correctly.</p>
+        </div>
+    </div>
+
+    <?php
+    $content = ob_get_clean();
+    require APP_VIEWS_DIR . '/layouts/app-main.php';
+    ?>
+    ```
+  </Step>
+
+  <Step title="Upload and visit">
+    Upload just the two new files via FTP — no need to re-upload the whole framework.
+
+    Then visit:
+
+    ```
+    https://app.yoursite.com/tenant/1/hello
+    ```
+
+    Use the tenant number from your dashboard's address if it isn't `1`.
+
+    You should see your new page, inside the app shell, with your user's name and tenant displayed.
+
+    <Check>
+    If you can see the page, you've just built your first FrankPHP feature. The route, middleware, controller, and view are all working together correctly.
+    </Check>
+  </Step>
+</Steps>
+
+---
+
+## What just happened
+
+To see what FrankPHP did, step by step, when you visited that page, read [The Run Cycle](/architecture/the-run-cycle).

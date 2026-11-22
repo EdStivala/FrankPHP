@@ -1,0 +1,17 @@
+---
+title: "Let FrankPHP initialise the database"
+sidebarTitle: "6. Initialise the database"
+description: "FrankPHP creates its own tables on first boot."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={6} />
+
+Nothing to do here by hand. The first time you visit the site, FrankPHP checks whether its core tables exist and, if not, creates them automatically from `framework/sql/schema.core.sql`.
+
+A fresh install starts empty: there are no starter tenants and no starter accounts. You create the first one yourself when you sign in, in Step 8.
+
+<Note>
+If you'd rather review the schema before your first visit, you can still import `framework/sql/schema.core.sql` manually through phpMyAdmin's **Import** tab, or by pasting its contents into the **SQL** command window. This is entirely optional — FrankPHP creates it automatically either way.
+</Note>

@@ -1,0 +1,23 @@
+---
+title: "Upload FrankPHP"
+sidebarTitle: "4. Upload FrankPHP"
+description: "Upload the framework and app folders into your project folder."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={4} />
+
+Upload the entire contents of your downloaded FrankPHP folder into `/yourproject`. You should end up with two sibling folders inside it:
+
+```
+/yourproject
+  /framework   ← the FrankPHP framework itself
+  /app         ← your application
+```
+
+<Warning>
+**`framework/` is not yours to edit.** It's replaced wholesale on every framework update, so any changes you make inside it will be silently lost the next time you update. All of your own code, views, and configuration live in `app/` — see `framework/codebase.md` for the full framework/application ownership boundary.
+</Warning>
+
+**Check:** `app/bootstrap.php` and `framework/bootstrap.php` should each sit at the root of their own folder, not inside a subfolder. Your `.env` file should sit at `app/.env`.

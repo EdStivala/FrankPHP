@@ -1,0 +1,105 @@
+---
+title: "Revisions and Migrations"
+description: "The contract between FrankPHP and your app: which folder is yours, what you must never edit, and what happens when you update."
+---
+
+import { Flow } from "/snippets/flow.jsx";
+
+Every FrankPHP project is two folders side by side. **`app/` is yours. `framework/` is Frank's.**
+
+An update replaces `framework/` completely and never touches `app/`. That one rule is what makes updating safe — as long as you keep to your side of it.
+
+---
+
+## Your folder and Frank's folder
+
+| | `app/` | `framework/` |
+|---|---|---|
+| **Who owns it** | You | FrankPHP |
+| **What's in it** | Your controllers, models, services, views, routes, settings and `.env` | The core: sign-in, tenants and users, middleware, `Clock`, the database layer |
+| **On an update** | Never touched | Replaced, whole |
+| **Can you edit it?** | Yes — it's your code | No |
+| **Its guide for AI assistants** | `app/MYAPP.md` | `framework/codebase.md` |
+
+---
+
+## What you must never edit
+
+<Warning>
+**Anything inside `framework/`.** An update is a folder replacement, not a merge. Any change you make in `framework/` is silently lost the next time you update, with no warning.
+</Warning>
+
+That includes the things it's most tempting to change:
+
+- **The `tenants` and `users` tables.** Don't add columns to them.
+- **The framework's models,** such as `User` and `Tenant`.
+- **The framework's services,** such as the sign-in and user services.
+- **The framework's email templates.**
+
+---
+
+## How to change things without touching `framework/`
+
+Each of those has a supported way in, from your own side:
+
+| You want to… | Do this, in `app/` |
+|---|---|
+| Store more about a tenant or user | Create your own table with a `tenant_id` or `user_id` link back, plus your own model. See [Add a form](/cookbooks/add-a-form) for a table, model and service of your own. |
+| Change the wording of a framework email | Write your own template class and name it under `mail.templates` in `app/Config/config.php`. |
+| Change where new sign-ups go | Replace the framework's sign-up rule with your own, using `$container->override()` in `app/bootstrap.php`. See [Customising Sign-up](/cookbooks/customising-signup). |
+| Replace a framework route | Use `$router->override()` instead of `$router->add()` in `app/bootstrap.php`. |
+| Change the sign-in screens | Edit them freely: they're in `app/Views/auth/`, so they're already yours. |
+
+---
+
+## New install or update?
+
+| You're… | Download | The database |
+|---|---|---|
+| **Starting a new project** | The release's **Source code** zip — it has both `framework/` and `app/` | Created for you on first boot |
+| **Updating an existing project** | The release's **framework-only** zip — it has `framework/` alone | Changed by that release's migration, if it has one |
+
+<Warning>
+Never use the full Source code zip to update. It includes a fresh copy of `app/`, which would overwrite your own code.
+</Warning>
+
+---
+
+## What an update involves
+
+<Flow
+  start="A new FrankPHP release"
+  steps={[
+    { label: "Always", title: "Replace framework/", text: "With the contents of the framework-only zip. Leave app/ alone." },
+    { label: "If the release has one", title: "Run the migration", text: "Brings your database up to date, without losing data." },
+    { label: "If the notes say so", title: "Copy in starter-app changes", text: "New or changed files in the starter app/ don't reach you on their own." },
+  ]}
+  end={{ label: "Done", title: "Updated", text: "Your app/ is exactly as you left it" }}
+/>
+
+### The migration
+
+A **migration** is a SQL script that changes an existing database to match the new release, keeping all your data. Each one is in `framework/sql/migrations/`, named after its release — for example `v3.0.0_passwordless.sql`.
+
+- **You run it by hand**, once per database, after replacing `framework/`.
+- **Back up your database first.**
+- **It's safe to run twice.** Each step checks first, so running it again does no harm.
+- **It may stop on purpose.** If your data needs a decision only you can make, the script stops and says what to fix. The v3.0.0 script, for example, stops if the same email address is used in more than one tenant.
+
+<Note>
+New installs never need a migration. The first time a new install loads, FrankPHP creates its tables from `framework/sql/schema.core.sql`. That file is only ever used when there are no tables yet — never on a database that already has data.
+</Note>
+
+### Starter-app changes
+
+Your `app/` started life as a copy of FrankPHP's starter app. When a release changes the starter app — a new sign-in screen, a new form field — that change can't reach your project, because updates never touch `app/`.
+
+The release notes list every such change, with the files to copy. Release 3.0.0, for example, asks you to copy in the new sign-in screens.
+
+---
+
+## Where each release's notes are
+
+- **`framework/CHANGELOG.md`** — what changed in every release, with an **Upgrade notes** list for each.
+- **`framework/Versions/`** — one file of upgrade notes per release, for example `FrankPHP_v3.0.0_upgrade_notes.md`.
+- **Upgrade guides** in this site's sidebar — step-by-step guides for upgrading to a particular release.

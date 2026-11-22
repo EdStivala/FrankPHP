@@ -1,0 +1,25 @@
+---
+title: "Set up your server folders"
+sidebarTitle: "3. Set up server folders"
+description: "Create a project folder on your hosting account."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={3} />
+
+Connect to your hosting account via FTP and navigate to your root directory. Create a project folder — name it whatever makes sense for what you're building (your product's own name, or just `/frankphp`). This guide uses `/yourproject`.
+
+```
+/yourproject   ← FrankPHP lives here
+/www           ← your marketing site, if you have one (point www.yoursite.com here)
+/docs          ← user documentation, if needed (point docs.yoursite.com here)
+```
+
+<Note>
+`/www` and `/docs` are optional and outside the scope of this guide — they're here to show how a typical FrankPHP-based project organizes a hosting account. What matters right now is creating `/yourproject`.
+</Note>
+
+<Note>
+Some FrankPHP-based products also add a `/platform` folder — a super-user layer that sits above individual tenant owners. The framework has a matching `platform` user role: a platform user can see users across all tenants on the Users dashboard, and can sign in as a tenant's owner to give support (see [Tenants, Ownership & Roles](/concepts/users/tenants-and-roles)). Most projects won't need it yet.
+</Note>

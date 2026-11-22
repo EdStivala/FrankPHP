@@ -1,0 +1,864 @@
+---
+title: "Add a form"
+description: "Build a Customers screen — list, add, edit and delete — and learn how FrankPHP checks what people type and saves it without you writing SQL."
+---
+
+import { Flow } from "/snippets/flow.jsx";
+
+In this cookbook you'll build a **Customers** screen: a list of customers, a form to add or edit one, and a button to delete one.
+
+On the way you'll learn two things every FrankPHP app needs:
+
+- how to **check what people type** before it's saved
+- how your model **loads and saves data** for you, so you never write SQL
+
+<Note>
+New to FrankPHP? Do [Build your first page](/cookbooks/build-your-first-page) first. It introduces routes, controllers and views in their simplest form.
+</Note>
+
+---
+
+## What you'll end up with
+
+A list at `/tenant/1/customers`, and a form for each customer with these fields:
+
+| Field | Rule |
+|-------|------|
+| Customer Number | Made by FrankPHP when you first save. Nobody types it, and it never changes. |
+| Name | Required |
+| Position | Optional |
+| Phone Number | Optional. Digits, spaces, brackets and dashes, with an optional `+` at the start. |
+| Email | Optional. Must be a real email address. |
+| Business Name | Required |
+| Account Manager | Optional. Chosen from the people in your own tenant. |
+
+Each customer belongs to one tenant. People only ever see their own tenant's customers.
+
+---
+
+## How the pieces fit
+
+Pressing **Save** on the form sends what you typed through these pieces of code, each with one job:
+
+<Flow
+  start="You press Save on the form"
+  steps={[
+    { label: "Route", title: "Finds the right controller", text: "Connects the web address to your code" },
+    { label: "Controller", title: "Takes the request", text: "Hands what you typed to the service" },
+    { label: "Service", title: "Checks it and decides", text: "Is it valid? What time is it? What gets saved?" },
+    { label: "Model", title: "Saves it", text: "Using the methods it inherits from BaseModel" },
+    { label: "Database", title: "Stores it", text: "In the customers table" },
+  ]}
+  end={{ label: "View", title: "Shows the next page", text: "The controller picks it, the view draws it" }}
+/>
+
+| Piece | Its one job | File you'll create |
+|-------|-------------|--------------------|
+| **Table** | Stores the customers | `app/sql/schema.app.sql` |
+| **Model** | Describes one customer, and loads and saves them | `app/Models/Customer.php` |
+| **Service** | Holds the rules: is it valid, what time is it, what gets saved | `app/Services/CustomerService.php` |
+| **Controller** | Takes the request, asks the service, picks the next page | `app/Controllers/CustomerController.php` |
+| **Route** | Connects a web address to the controller | `app/bootstrap.php` |
+| **View** | The HTML people see | `app/Views/customers/index.php` and `edit.php` |
+
+<Tip>
+A good way to remember it: **views show, controllers direct, services decide, models store.**
+</Tip>
+
+You'll build them from the bottom up: the table first, the screens last. Each part shows only the lines that matter. Open **Full file** to copy the whole thing.
+
+---
+
+## 1. The table
+
+**Why:** customers need somewhere to live.
+
+Create `app/sql/schema.app.sql`:
+
+```sql
+CREATE TABLE IF NOT EXISTS customers (
+  id                      INT PRIMARY KEY AUTO_INCREMENT,
+  tenant_id               INT NOT NULL,
+  customer_number         CHAR(36) NOT NULL,
+  name                    VARCHAR(255) NOT NULL,
+  position                VARCHAR(255) NULL DEFAULT NULL,
+  phone                   VARCHAR(30) NULL DEFAULT NULL,
+  email                   VARCHAR(255) NULL DEFAULT NULL,
+  business_name           VARCHAR(255) NOT NULL,
+  account_manager_user_id INT NULL DEFAULT NULL,
+  created_at              DATETIME NOT NULL DEFAULT (UTC_TIMESTAMP()),
+  updated_at              DATETIME NULL DEFAULT NULL,
+
+  UNIQUE KEY uq_customers_number (customer_number),
+  INDEX idx_customers_tenant_name (tenant_id, name),
+
+  CONSTRAINT fk_customers_tenant
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  CONSTRAINT fk_customers_account_manager
+    FOREIGN KEY (account_manager_user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+Three columns are worth knowing about:
+
+- **`tenant_id`** can never be empty, so every customer belongs to a tenant.
+- **`customer_number`** is the UUID people see. `id` is the plain number FrankPHP uses behind the scenes.
+- **`account_manager_user_id`** points at a user. If that user is deleted, the customer simply has no account manager.
+
+Now tell FrankPHP to create the table. In `app/bootstrap.php`, replace `CHANGE_ME_sentinel_table` with `customers`:
+
+```php
+\Frank\Core\Database::runSchemaFileIfMissingTable($appSchemaPath, 'customers');
+```
+
+<Check>
+Load any page of your app. FrankPHP sees there's no `customers` table yet and creates it. It only ever does this once.
+</Check>
+
+---
+
+## 2. The model
+
+**Why:** the model is how your code talks to the table.
+
+Create `app/Models/Customer.php`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Frank\Core\BaseModel;
+
+class Customer extends BaseModel
+{
+    protected string $table = 'customers';
+
+    public ?int    $id                      = null;
+    public int     $tenant_id;
+    public string  $customer_number;
+    public string  $name;
+    public ?string $position                = null;
+    public ?string $phone                   = null;
+    public ?string $email                   = null;
+    public string  $business_name;
+    public ?int    $account_manager_user_id = null;
+    public ?string $created_at              = null; // UTC DATETIME
+    public ?string $updated_at              = null; // UTC DATETIME
+}
+```
+
+That's all of it: one line per column, and no functions. Every model gets these from FrankPHP's `BaseModel`, for free:
+
+| Method | What it does |
+|--------|--------------|
+| `fill($data)` | Copies values onto the model, converting each to the right type |
+| `save()` | Saves it: adds a new row, or updates the existing one |
+| `find($id, $tenantId)` | Loads one customer |
+| `all($tenantId)` | Loads every customer, newest first |
+| `where($tenantId, $column, $value)` | Loads the customers that match |
+| `delete()` | Deletes it |
+
+<Info>
+Every one of these is locked to a tenant. You can't load, change or delete another tenant's customer by mistake.
+</Info>
+
+---
+
+## 3. The service
+
+**Why:** the service holds your rules. Keeping them here, not in the controller or the view, means there's one place to look when a rule changes.
+
+Create `app/Services/CustomerService.php`. It does three jobs.
+
+### Tidy up what was typed
+
+```php
+private function clean(array $input): array
+{
+    return [
+        'name'          => trim((string) ($input['name'] ?? '')),
+        'business_name' => trim((string) ($input['business_name'] ?? '')),
+        // …and the other four fields
+    ];
+}
+```
+
+It trims the spaces off every field, and keeps **only the six fields a person may edit**. So however the form is tampered with, it can never change the customer number or the tenant.
+
+### Check it
+
+```php
+if ($c['name'] === '') {
+    $errors['name'] = "Enter the customer's name.";
+}
+
+if ($c['email'] !== '' && !EmailAddress::isValid($c['email'])) {
+    $errors['email'] = 'Enter a valid email address.';
+}
+
+if ($c['account_manager_user_id'] !== ''
+    && User::find((int) $c['account_manager_user_id'], $tenantId) === null) {
+    $errors['account_manager_user_id'] = 'Choose an account manager from the list.';
+}
+```
+
+- Every problem gets its own message, so people see all their mistakes at once, not one at a time.
+- Email uses `EmailAddress::isValid()`, the same check FrankPHP's sign-in screen uses.
+- The account manager is looked up with `find()`. Because `find()` is locked to the tenant, someone from another tenant is "not found", even if the form is edited to send their id.
+
+### Create, read, update and delete
+
+This is where the inherited methods do the work:
+
+<Tabs>
+  <Tab title="Create">
+    ```php
+    $customer = new Customer();
+    $customer->fill($clean + [
+        'tenant_id'       => $tenantId,
+        'customer_number' => $this->newCustomerNumber(),
+        'created_at'      => Clock::nowUtcString(),
+    ]);
+    $customer->save();
+    ```
+
+    `fill()` sets the typed fields plus the three FrankPHP adds itself. `save()` adds the row.
+  </Tab>
+  <Tab title="Read">
+    ```php
+    Customer::all($tenantId);               // the whole list
+    Customer::find($customerId, $tenantId); // one customer
+    ```
+  </Tab>
+  <Tab title="Update">
+    ```php
+    $customer = Customer::find($customerId, $tenantId);
+    $customer->fill($clean);
+    $customer->updated_at = Clock::nowUtcString();
+    $customer->save();
+    ```
+
+    `save()` sees the customer already exists and updates it. Setting `updated_at` is your job: FrankPHP never does it for you.
+  </Tab>
+  <Tab title="Delete">
+    ```php
+    $customer = Customer::find($customerId, $tenantId);
+    $customer->delete();
+    ```
+  </Tab>
+</Tabs>
+
+<Accordion title="Full file: app/Services/CustomerService.php">
+  ```php
+  <?php
+
+  namespace App\Services;
+
+  use App\Models\Customer;
+  use Frank\Core\Clock;
+  use Frank\Models\User;
+  use Frank\Services\Email\EmailAddress;
+  use Frank\Services\ServiceResult;
+
+  class CustomerService
+  {
+      /** READ (many): every customer in the tenant, as flat rows ready for the list view. */
+      public function listCustomers(int $tenantId): array
+      {
+          $managers = $this->userNames($tenantId);
+          $rows     = [];
+
+          foreach (Customer::all($tenantId) as $customer) {
+              $managerId = $customer->account_manager_user_id;
+
+              $rows[] = [
+                  'id'              => $customer->id,
+                  'customer_number' => $customer->customer_number,
+                  'name'            => $customer->name,
+                  'business_name'   => $customer->business_name,
+                  'email'           => $customer->email ?? '',
+                  'phone'           => $customer->phone ?? '',
+                  'account_manager' => $managerId === null ? '—' : ($managers[$managerId] ?? '—'),
+              ];
+          }
+
+          return $rows;
+      }
+
+      /** READ (one): a customer in this tenant, or null. */
+      public function findCustomer(int $tenantId, int $customerId): ?Customer
+      {
+          return Customer::find($customerId, $tenantId);
+      }
+
+      /** CREATE */
+      public function createCustomer(int $tenantId, array $input): ServiceResult
+      {
+          $clean  = $this->clean($input);
+          $errors = $this->validate($tenantId, $clean);
+          if ($errors !== []) {
+              return ServiceResult::failure('Please correct the fields shown.', 'validation', ['errors' => $errors]);
+          }
+
+          $customer = new Customer();
+          $customer->fill($clean + [
+              'tenant_id'       => $tenantId,
+              'customer_number' => $this->newCustomerNumber(),
+              'created_at'      => Clock::nowUtcString(),
+          ]);
+
+          if (!$customer->save()) {
+              return ServiceResult::failure('Could not save the customer.', 'system');
+          }
+
+          // save() returns true or false only. Read the new row back to get its id.
+          $saved = Customer::where($tenantId, 'customer_number', $customer->customer_number)[0] ?? null;
+
+          return ServiceResult::success('Customer saved.', ['customer' => $saved]);
+      }
+
+      /** UPDATE */
+      public function updateCustomer(int $tenantId, int $customerId, array $input): ServiceResult
+      {
+          $customer = Customer::find($customerId, $tenantId);
+          if ($customer === null) {
+              return ServiceResult::failure('Customer not found.', 'not_found');
+          }
+
+          $clean  = $this->clean($input);
+          $errors = $this->validate($tenantId, $clean);
+          if ($errors !== []) {
+              return ServiceResult::failure('Please correct the fields shown.', 'validation', ['errors' => $errors]);
+          }
+
+          $customer->fill($clean); // only the six editable fields are in $clean
+          $customer->updated_at = Clock::nowUtcString();
+
+          if (!$customer->save()) {
+              return ServiceResult::failure('Could not save the customer.', 'system');
+          }
+
+          return ServiceResult::success('Customer saved.', ['customer' => $customer]);
+      }
+
+      /** DELETE */
+      public function deleteCustomer(int $tenantId, int $customerId): ServiceResult
+      {
+          $customer = Customer::find($customerId, $tenantId);
+          if ($customer === null) {
+              return ServiceResult::failure('Customer not found.', 'not_found');
+          }
+
+          if (!$customer->delete()) {
+              return ServiceResult::failure('Could not delete the customer.', 'system');
+          }
+
+          return ServiceResult::success('Customer deleted.');
+      }
+
+      /** The values the form shows: what was typed (after a failed save), else the stored customer, else blanks. */
+      public function formValues(?Customer $customer, ?array $posted = null): array
+      {
+          if ($posted !== null) {
+              return $this->clean($posted);
+          }
+
+          return [
+              'name'                    => $customer?->name ?? '',
+              'position'                => $customer?->position ?? '',
+              'phone'                   => $customer?->phone ?? '',
+              'email'                   => $customer?->email ?? '',
+              'business_name'           => $customer?->business_name ?? '',
+              'account_manager_user_id' => (string) ($customer?->account_manager_user_id ?? ''),
+          ];
+      }
+
+      /** The tenant's users for the Account Manager list, with the chosen one marked. */
+      public function accountManagerOptions(int $tenantId, string $selectedId): array
+      {
+          $options = [];
+          foreach ($this->userNames($tenantId) as $id => $name) {
+              $options[] = ['id' => $id, 'name' => $name, 'selected' => (string) $id === $selectedId];
+          }
+
+          return $options;
+      }
+
+      /** Trim every field and keep only the six a person may edit. */
+      private function clean(array $input): array
+      {
+          $email = trim((string) ($input['email'] ?? ''));
+
+          return [
+              'name'                    => trim((string) ($input['name'] ?? '')),
+              'position'                => trim((string) ($input['position'] ?? '')),
+              'phone'                   => trim((string) ($input['phone'] ?? '')),
+              'email'                   => $email === '' ? '' : EmailAddress::normalise($email),
+              'business_name'           => trim((string) ($input['business_name'] ?? '')),
+              'account_manager_user_id' => trim((string) ($input['account_manager_user_id'] ?? '')),
+          ];
+      }
+
+      /** Returns field => message for every field that fails. An empty array means valid. */
+      private function validate(int $tenantId, array $c): array
+      {
+          $errors = [];
+
+          if ($c['name'] === '') {
+              $errors['name'] = "Enter the customer's name.";
+          } elseif (mb_strlen($c['name']) > 255) {
+              $errors['name'] = 'Use 255 characters or fewer.';
+          }
+
+          if ($c['business_name'] === '') {
+              $errors['business_name'] = 'Enter the business name.';
+          } elseif (mb_strlen($c['business_name']) > 255) {
+              $errors['business_name'] = 'Use 255 characters or fewer.';
+          }
+
+          if (mb_strlen($c['position']) > 255) {
+              $errors['position'] = 'Use 255 characters or fewer.';
+          }
+
+          if ($c['phone'] !== '' && !preg_match('/^\+?[0-9 ()\-]{6,30}$/', $c['phone'])) {
+              $errors['phone'] = 'Use digits, spaces, brackets and dashes, with an optional + at the start.';
+          }
+
+          if ($c['email'] !== '' && !EmailAddress::isValid($c['email'])) {
+              $errors['email'] = 'Enter a valid email address.';
+          }
+
+          // The account manager must be a user in THIS tenant. find() is tenant-scoped,
+          // so a user id from another tenant comes back null.
+          if ($c['account_manager_user_id'] !== ''
+              && User::find((int) $c['account_manager_user_id'], $tenantId) === null) {
+              $errors['account_manager_user_id'] = 'Choose an account manager from the list.';
+          }
+
+          return $errors;
+      }
+
+      /** user id => name, for every user in the tenant. */
+      private function userNames(int $tenantId): array
+      {
+          $names = [];
+          foreach (User::all($tenantId) as $user) {
+              $names[$user->id] = $user->name;
+          }
+
+          return $names;
+      }
+
+      /** A random version 4 UUID, e.g. 3f2b8c1e-9d4a-4f6b-8e2a-1c5d7e9f0a3b. */
+      private function newCustomerNumber(): string
+      {
+          $bytes    = random_bytes(16);
+          $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40); // version 4
+          $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80); // RFC 4122 variant
+
+          return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+      }
+  }
+  ```
+</Accordion>
+
+---
+
+## 4. The controller
+
+**Why:** the controller is the traffic director. It doesn't decide anything itself: it asks the service, then sends people to the right page.
+
+Here's what happens when someone presses **Save**:
+
+<Flow
+  start="The form is posted"
+  steps={[
+    { label: "Check", title: "Security token", text: "Did the form come from your own site?", stops: ["No: back to the list, with an error"] },
+    { label: "Service", title: "Checks and saves", text: "Every field is checked against the rules", stops: ["Something to fix: the form again, with a message by each field", "Other problem: back to the list, with an error"] },
+  ]}
+  end={{ label: "Saved", title: "Back to the list", text: "With the message \"Customer saved\"" }}
+/>
+
+And the code that does it:
+
+```php
+if (!Session::csrfValid($data)) {
+    return Response::redirect("/tenant/{$tenantId}/customers?error=invalid_request");
+}
+
+$result = $id > 0
+    ? $this->customerService->updateCustomer($tenantId, $id, $data)
+    : $this->customerService->createCustomer($tenantId, $data);
+
+if ($result->success) {
+    return Response::redirect("/tenant/{$tenantId}/customers?success=saved");
+}
+```
+
+The **security token** is a hidden field on every form. Checking it proves the form came from your own site.
+
+<Accordion title="Full file: app/Controllers/CustomerController.php">
+  ```php
+  <?php
+
+  namespace App\Controllers;
+
+  use App\Models\Customer;
+  use App\Services\CustomerService;
+  use Frank\Core\BaseController;
+  use Frank\Core\Request;
+  use Frank\Core\Response;
+  use Frank\Core\Session;
+
+  class CustomerController extends BaseController
+  {
+      public function __construct(private CustomerService $customerService) {}
+
+      /** GET /tenant/{tenant_id}/customers */
+      public function index(Request $request, array $params): mixed
+      {
+          $tenant = $request->tenant;
+
+          return $this->view('customers/index', [
+              'title'     => 'Customers',
+              'tenant'    => $tenant,
+              'user'      => $request->user,
+              'customers' => $this->customerService->listCustomers((int) $tenant['id']),
+          ]);
+      }
+
+      /** GET /tenant/{tenant_id}/customers/edit — no id: a new customer; ?id=: an existing one */
+      public function edit(Request $request, array $params): mixed
+      {
+          $tenantId = (int) $request->tenant['id'];
+          $id       = (int) ($request->get['id'] ?? 0);
+          $customer = null;
+
+          if ($id > 0) {
+              $customer = $this->customerService->findCustomer($tenantId, $id);
+              if ($customer === null) {
+                  return Response::redirect("/tenant/{$tenantId}/customers");
+              }
+          }
+
+          return $this->form($request, $customer, $this->customerService->formValues($customer), []);
+      }
+
+      /** POST /tenant/{tenant_id}/customers/save — fields: id (empty for a new customer) and the six customer fields */
+      public function save(Request $request, array $params): mixed
+      {
+          $tenantId = (int) $request->tenant['id'];
+          $data     = $request->bodyParams ?? $request->post;
+
+          if (!Session::csrfValid($data)) {
+              return Response::redirect("/tenant/{$tenantId}/customers?error=invalid_request");
+          }
+
+          $id     = (int) ($data['id'] ?? 0);
+          $result = $id > 0
+              ? $this->customerService->updateCustomer($tenantId, $id, $data)
+              : $this->customerService->createCustomer($tenantId, $data);
+
+          if ($result->success) {
+              return Response::redirect("/tenant/{$tenantId}/customers?success=saved");
+          }
+
+          if (!$result->isValidationError()) {
+              return Response::redirect("/tenant/{$tenantId}/customers?error=save_failed");
+          }
+
+          // Show the form again, with what was typed and a message beside each problem.
+          $customer = $id > 0 ? $this->customerService->findCustomer($tenantId, $id) : null;
+
+          return $this->form(
+              $request,
+              $customer,
+              $this->customerService->formValues($customer, $data),
+              $result->get('errors', [])
+          );
+      }
+
+      /** POST /tenant/{tenant_id}/customers/delete — field: id */
+      public function delete(Request $request, array $params): mixed
+      {
+          $tenantId = (int) $request->tenant['id'];
+          $data     = $request->bodyParams ?? $request->post;
+
+          if (!Session::csrfValid($data)) {
+              return Response::redirect("/tenant/{$tenantId}/customers?error=invalid_request");
+          }
+
+          $result = $this->customerService->deleteCustomer($tenantId, (int) ($data['id'] ?? 0));
+
+          return Response::redirect("/tenant/{$tenantId}/customers?" . ($result->success ? 'success=deleted' : 'error=delete_failed'));
+      }
+
+      private function form(Request $request, ?Customer $customer, array $values, array $errors): mixed
+      {
+          $tenantId = (int) $request->tenant['id'];
+
+          return $this->view('customers/edit', [
+              'title'    => $customer === null ? 'New Customer' : 'Edit Customer',
+              'tenant'   => $request->tenant,
+              'user'     => $request->user,
+              'isNew'    => $customer === null,
+              'customer' => $customer,
+              'values'   => $values,
+              'errors'   => $errors,
+              'managers' => $this->customerService->accountManagerOptions($tenantId, $values['account_manager_user_id']),
+          ]);
+      }
+  }
+  ```
+</Accordion>
+
+---
+
+## 5. The routes
+
+**Why:** routes tell FrankPHP which web address runs which part of the controller.
+
+| Address | Type | What it does |
+|---------|------|--------------|
+| `/tenant/1/customers` | Page | Shows the list |
+| `/tenant/1/customers/edit` | Page | Shows the form: empty for a new customer, filled in for an existing one |
+| `/tenant/1/customers/save` | Form post | Saves a new or changed customer |
+| `/tenant/1/customers/delete` | Form post | Deletes a customer |
+
+Add this to `app/bootstrap.php`:
+
+```php
+// Customers
+$container->singleton(\App\Services\CustomerService::class, function ($c) {
+    return new \App\Services\CustomerService();
+});
+$container->bind(\App\Controllers\CustomerController::class, function ($c) {
+    return new \App\Controllers\CustomerController($c->make(\App\Services\CustomerService::class));
+});
+
+$router->add('GET',  '/tenant/{tenant_id}/customers',        'CustomerController@index',  [$tm, $auth]);
+$router->add('GET',  '/tenant/{tenant_id}/customers/edit',   'CustomerController@edit',   [$tm, $auth]);
+$router->add('POST', '/tenant/{tenant_id}/customers/save',   'CustomerController@save',   [$tm, $auth, $json]);
+$router->add('POST', '/tenant/{tenant_id}/customers/delete', 'CustomerController@delete', [$tm, $auth, $json]);
+```
+
+The first two entries tell FrankPHP how to build the service and controller. In the routes, `$tm` and `$auth` make sure someone is signed in to the right tenant; `$json` reads the form's fields.
+
+---
+
+## 6. The views
+
+**Why:** this is what people actually see.
+
+### The list
+
+`app/Views/customers/index.php` shows a table with one row per customer. Each customer number links to its form.
+
+<Accordion title="Full file: app/Views/customers/index.php">
+  ```php
+  <?php
+  // Customer list. Supplied by CustomerController::index(): $tenant, $user, $customers.
+  $title = 'Customers';
+  ob_start();
+  ?>
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+      <h4 class="mb-0">Customers</h4>
+      <a href="/tenant/<?= (int) $tenant['id'] ?>/customers/edit" class="btn btn-brand-primary">New customer</a>
+  </div>
+
+  <?php if (($_GET['success'] ?? '') === 'saved') : ?>
+      <div class="alert alert-success settings-alert">Customer saved.</div>
+  <?php elseif (($_GET['success'] ?? '') === 'deleted') : ?>
+      <div class="alert alert-success settings-alert">Customer deleted.</div>
+  <?php elseif (($_GET['error'] ?? '') === 'save_failed') : ?>
+      <div class="alert alert-danger settings-alert">Could not save — please try again.</div>
+  <?php elseif (($_GET['error'] ?? '') === 'delete_failed') : ?>
+      <div class="alert alert-danger settings-alert">Could not delete — please try again.</div>
+  <?php elseif (($_GET['error'] ?? '') === 'invalid_request') : ?>
+      <div class="alert alert-danger settings-alert">Invalid request. Please try again.</div>
+  <?php endif; ?>
+
+  <table class="table table-hover">
+      <thead>
+          <tr>
+              <th>Customer number</th>
+              <th>Name</th>
+              <th>Business</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Account manager</th>
+          </tr>
+      </thead>
+      <tbody>
+          <?php foreach ($customers as $row) : ?>
+              <tr>
+                  <td>
+                      <a href="/tenant/<?= (int) $tenant['id'] ?>/customers/edit?id=<?= (int) $row['id'] ?>">
+                          <?= htmlspecialchars($row['customer_number']) ?>
+                      </a>
+                  </td>
+                  <td><?= htmlspecialchars($row['name']) ?></td>
+                  <td><?= htmlspecialchars($row['business_name']) ?></td>
+                  <td><?= htmlspecialchars($row['email']) ?></td>
+                  <td><?= htmlspecialchars($row['phone']) ?></td>
+                  <td><?= htmlspecialchars($row['account_manager']) ?></td>
+              </tr>
+          <?php endforeach; ?>
+      </tbody>
+  </table>
+
+  <?php
+  $content = ob_get_clean();
+  require APP_VIEWS_DIR . '/layouts/app-main.php';
+  ?>
+  ```
+</Accordion>
+
+### The form
+
+`app/Views/customers/edit.php` is used both to add and to edit. Every field follows the same pattern: the value, plus a message underneath if the service found a problem.
+
+```php
+<input type="text" class="form-control<?= isset($errors['name']) ? ' is-invalid' : '' ?>"
+    id="name" name="name" value="<?= htmlspecialchars($values['name']) ?>">
+<div class="invalid-feedback"><?= htmlspecialchars($errors['name'] ?? '') ?></div>
+```
+
+And every form includes the security token:
+
+```php
+<?php include APP_VIEWS_DIR . '/partials/csrf-field.php'; ?>
+```
+
+<Accordion title="Full file: app/Views/customers/edit.php">
+  ```php
+  <?php
+  // New or edit customer. Supplied by CustomerController::form():
+  // $tenant, $user, $isNew, $customer (null when new), $values, $errors, $managers.
+  ob_start();
+  ?>
+
+  <div class="page-header d-flex align-items-center justify-content-between">
+      <h4 class="mb-0"><?= htmlspecialchars($title) ?></h4>
+      <a href="/tenant/<?= (int) $tenant['id'] ?>/customers" class="btn btn-outline-secondary">Back to Customers</a>
+  </div>
+
+  <?php if ($errors) : ?>
+      <div class="alert alert-danger settings-alert">Please correct the fields shown.</div>
+  <?php endif; ?>
+
+  <div class="settings-layout">
+      <div class="settings-panel">
+
+          <div class="settings-group">
+              <div class="settings-group-title">Customer</div>
+              <div class="settings-group-description">
+                  <?php if ($isNew) : ?>
+                      The customer number is assigned when you save.
+                  <?php else : ?>
+                      Customer number <?= htmlspecialchars($customer->customer_number) ?>
+                  <?php endif; ?>
+              </div>
+
+              <form method="post" action="/tenant/<?= (int) $tenant['id'] ?>/customers/save">
+                  <?php include APP_VIEWS_DIR . '/partials/csrf-field.php'; ?>
+                  <input type="hidden" name="id" value="<?= $isNew ? '' : (int) $customer->id ?>">
+
+                  <div class="mb-3">
+                      <label class="form-label" for="name">Name</label>
+                      <input type="text" class="form-control<?= isset($errors['name']) ? ' is-invalid' : '' ?>"
+                          id="name" name="name" maxlength="255" value="<?= htmlspecialchars($values['name']) ?>">
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['name'] ?? '') ?></div>
+                  </div>
+
+                  <div class="mb-3">
+                      <label class="form-label" for="position">Position</label>
+                      <input type="text" class="form-control<?= isset($errors['position']) ? ' is-invalid' : '' ?>"
+                          id="position" name="position" maxlength="255" value="<?= htmlspecialchars($values['position']) ?>">
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['position'] ?? '') ?></div>
+                  </div>
+
+                  <div class="mb-3">
+                      <label class="form-label" for="phone">Phone number</label>
+                      <input type="tel" class="form-control<?= isset($errors['phone']) ? ' is-invalid' : '' ?>"
+                          id="phone" name="phone" maxlength="30" value="<?= htmlspecialchars($values['phone']) ?>">
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['phone'] ?? '') ?></div>
+                  </div>
+
+                  <div class="mb-3">
+                      <label class="form-label" for="email">Email</label>
+                      <input type="email" class="form-control<?= isset($errors['email']) ? ' is-invalid' : '' ?>"
+                          id="email" name="email" maxlength="255" value="<?= htmlspecialchars($values['email']) ?>">
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['email'] ?? '') ?></div>
+                  </div>
+
+                  <div class="mb-3">
+                      <label class="form-label" for="business_name">Business name</label>
+                      <input type="text" class="form-control<?= isset($errors['business_name']) ? ' is-invalid' : '' ?>"
+                          id="business_name" name="business_name" maxlength="255" value="<?= htmlspecialchars($values['business_name']) ?>">
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['business_name'] ?? '') ?></div>
+                  </div>
+
+                  <div class="mb-3">
+                      <label class="form-label" for="account_manager_user_id">Account manager</label>
+                      <select class="form-select<?= isset($errors['account_manager_user_id']) ? ' is-invalid' : '' ?>"
+                          id="account_manager_user_id" name="account_manager_user_id">
+                          <option value="">— None —</option>
+                          <?php foreach ($managers as $manager) : ?>
+                              <option value="<?= (int) $manager['id'] ?>"<?= $manager['selected'] ? ' selected' : '' ?>>
+                                  <?= htmlspecialchars($manager['name']) ?>
+                              </option>
+                          <?php endforeach; ?>
+                      </select>
+                      <div class="invalid-feedback"><?= htmlspecialchars($errors['account_manager_user_id'] ?? '') ?></div>
+                  </div>
+
+                  <button type="submit" class="btn btn-brand-primary">Save customer</button>
+              </form>
+          </div>
+
+          <?php if (!$isNew) : ?>
+              <div class="settings-group">
+                  <div class="settings-group-title">Delete customer</div>
+                  <div class="settings-group-description">Permanently deletes this customer. This cannot be undone.</div>
+                  <form method="post" action="/tenant/<?= (int) $tenant['id'] ?>/customers/delete"
+                      onsubmit="return confirm('Are you sure? This cannot be undone.');">
+                      <?php include APP_VIEWS_DIR . '/partials/csrf-field.php'; ?>
+                      <input type="hidden" name="id" value="<?= (int) $customer->id ?>">
+                      <button type="submit" class="btn btn-outline-danger">Delete customer</button>
+                  </form>
+              </div>
+          <?php endif; ?>
+
+      </div>
+  </div>
+
+  <?php
+  $content = ob_get_clean();
+  require APP_VIEWS_DIR . '/layouts/app-main.php';
+  ?>
+  ```
+</Accordion>
+
+---
+
+## 7. Try it
+
+Upload your new and changed files, then visit `https://app.yoursite.com/tenant/1/customers` (use your own tenant number if it isn't `1`).
+
+1. Select **New customer** and save the form empty. Name and Business Name show a message.
+2. Fill it in and save. The customer appears in the list, with a customer number.
+3. Open it, change something and save. The list shows the change.
+4. Open it again and select **Delete customer**.
+
+<Check>
+All four work? You've built the full create, read, update and delete cycle, without a line of SQL.
+</Check>
+
+---
+
+## Next
+
+Add the `customers` table, the four routes and your new files to `app/MYAPP.md`, so your AI assistant knows they exist. See [Working with MYAPP.md](/getting-started/working-with-myapp).

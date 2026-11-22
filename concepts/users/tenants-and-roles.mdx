@@ -1,0 +1,101 @@
+---
+title: "Tenants, Ownership & Roles"
+description: "How FrankPHP creates and names a tenant for every new person, how others join it, and what the owner, user and platform roles mean."
+---
+
+**Someone signing in with a new email address gets their own new tenant**, and becomes its **owner**. To send new people somewhere else instead, see [Customising Sign-up](/cookbooks/customising-signup).
+
+---
+
+## How the tenant is named
+
+Nobody is asked for a company name. FrankPHP names the tenant from the email address, and the owner can rename it later in **Tenant Settings**.
+
+| Email address | Tenant name | Tenant slug |
+|---|---|---|
+| `jane@acme-corp.com` | Acme Corp | `acme-corp` |
+| `bob@mail.acme.co.uk` | Acme | `acme` |
+| `jane.doe@gmail.com` | Jane Doe's Workspace | `jane-does-workspace` |
+
+- **Business email:** the tenant is named after the organisation's domain. Subdomains and two-part endings such as `.co.uk` are handled.
+- **Personal email** (Gmail, Outlook, Hotmail, Yahoo, iCloud, Proton and other common providers): the tenant is named "*Name*'s Workspace".
+- **Slugs are unique.** If `acme-corp` is taken, the next tenant gets `acme-corp-2`, then `acme-corp-3`, and so on.
+- **The person's name** comes from the email too: `john.doe@…` becomes "John Doe". They can change it in User Settings.
+
+---
+
+## Joining an existing tenant
+
+Two colleagues who each sign in with a new address get **two separate tenants**. To work in the same tenant, one invites the other:
+
+- **An owner** invites someone to **join their tenant**, as a `user`.
+- **A platform user** invites someone to a **brand-new tenant**, as its `owner`.
+
+The invite arrives by email and lasts 7 days. The person follows the link, selects **Let me see**, and their account is created. An address that already has an account can't be invited.
+
+---
+
+## Roles
+
+| Role | Who has it |
+|---|---|
+| `owner` | The person a tenant was created for, at sign-up or from a platform invite |
+| `user` | Everyone else in the tenant, usually invited by the owner |
+| `platform` | You, and anyone else who runs the site. Set by hand in the database. |
+
+### What each role can do in the starter app
+
+| Area | `owner` | `user` | `platform` |
+|---|:---:|:---:|:---:|
+| Their tenant's dashboard and pages | ✓ | ✓ | ✓ |
+| User Settings (their own name and timezone) | ✓ | ✓ | ✓ |
+| Delete their own account | | ✓ | |
+| Tenant Settings | ✓ | | |
+| Users screen | Own tenant | | All tenants |
+| Invite people | To own tenant | | To a new tenant |
+| Edit or remove other users | Own tenant | | Any tenant |
+| Delete a tenant | Own tenant | | Any tenant |
+| Sign in as a tenant's owner, to help them | | | ✓ |
+
+<Note>
+This table is the **starter app's** choice. Who may do what is decided by your app, in your own `app/`, and you can change it.
+</Note>
+
+---
+
+## What the framework always protects
+
+Whatever your app's screens allow, the framework itself refuses to:
+
+- **delete an owner's account** on its own — an owner is only removed by deleting the whole tenant
+- **give or take away the `owner` or `platform` role** — those are only ever changed by hand in the database
+- **touch another tenant's users** — every operation is locked to one tenant
+
+Deleting a tenant deletes every user in it, too.
+
+<Warning>
+**The `admin` role was removed in FrankPHP 3.0.** Anyone who still has the role `admin` now gets no more access than a `user`.
+</Warning>
+
+<Warning>
+`platform` is a highly privileged role. Give it only to the people who run the site. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Roles and the Users Dashboard" icon="users" href="/concepts/users/users-dashboard">
+    <span className="frank-chip">Docs</span>
+    Which users each role can see.
+  </Card>
+  <Card title="Terms & Conditions Acceptance" icon="file-signature" href="/concepts/users/terms-acceptance">
+    <span className="frank-chip">Docs</span>
+    Record that new owners accepted your terms.
+  </Card>
+  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+    <span className="frank-chip">Cookbook</span>
+    Change which tenant and role a new person gets.
+  </Card>
+</CardGroup>

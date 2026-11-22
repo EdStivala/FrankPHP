@@ -1,207 +1,126 @@
 ---
 title: "Environment Configuration"
-description: "Use a standard .env file for local credentials and keep sensitive settings out of committed framework files and release packages."
+description: "Where FrankPHP keeps its settings and secrets, every key in app/.env, and how to add your own."
 ---
 
-# Environment Configuration
-
-FrankPHP adopts a standard `.env`-based configuration approach for credentials and environment-specific settings.
-
-This is architecturally important for two reasons.
-
-First, it improves security by keeping sensitive values out of general configuration files that are more likely to be copied, reused, or accidentally distributed. Second, it makes FrankPHP feel more familiar to developers coming from other modern PHP frameworks.
-
-That does **not** mean FrankPHP needs to become dependency-heavy or over-engineered. The goal is still the same: explicit, readable configuration with no unnecessary complexity.
+FrankPHP keeps every setting that changes from one install to another — database details, mail credentials, sign-in keys — in one plain text file: `app/.env`. Your code never holds them. It reads them, through `app/Config/config.php`, every time a page loads.
 
 ---
 
-## Why use a `.env` file?
+## Why a `.env` file
 
-A `.env` file gives you one place to keep environment-specific values such as:
+- **Better security.** Your credentials live outside the public web folder and outside your code, so they can't be requested in a browser, and they don't end up in your source history or a release by accident.
+- **Cleaner deployments.** Your laptop, a staging server and the live site each have their own `.env`. The code is identical everywhere; only the file differs.
+- **A familiar workflow.** Laravel, Symfony and most other PHP frameworks work the same way, so developers coming from them will recognise it straight away.
 
-- database host
-- database name
-- database username
-- database password
-- mail credentials
-- app environment flags
-- timezone overrides
-
-These values often differ between:
-
-- local development
-- staging
-- production
-- customer-specific installations
-
-Keeping them separate from the framework’s general configuration makes it easier to move between environments without editing core configuration files each time.
+FrankPHP does this without any outside package: a small loader of its own, `Frank\Core\Env`, reads the file.
 
 ---
 
-## The security advantage
-
-The biggest practical advantage is simple: **sensitive credentials are less likely to be exposed accidentally.**
-
-Without a dedicated `.env` approach, there is a tendency to place secrets directly in `app/Config/config.php` or other framework files. That works, but it increases the chance that credentials are:
-
-- copied into a release package
-- committed into source history
-- shared during support/debugging
-- left in files that are reused as templates
-
-Using a `.env` file reduces that risk.
-
-<Warning>
-A `.env` file still needs to be treated carefully. It is a safer place for secrets, but it is not something that should be shipped to customers inside a release package unless you explicitly intend it.
-</Warning>
-
----
-
-## Why this aligns FrankPHP with other PHP frameworks
-
-Most major PHP frameworks now separate environment-specific secrets from framework configuration.
-
-That is not just a convention for convention’s sake. It solves a real operational problem: credentials and runtime settings change by environment, while framework code should remain stable.
-
-Moving FrankPHP toward a standard `.env` pattern makes the framework more familiar to developers coming from the broader PHP ecosystem, while still preserving the FrankPHP philosophy of explicit code and minimal moving parts.
-
----
-
-## Recommended file setup
-
-A practical setup looks like this:
+## Where the files live
 
 ```text
 /yourproject
-  /framework
-    ...                 ← the framework itself, replaced wholesale on update
+  /framework       ← replaced on every update
   /app
-    /.env               ← local or server-specific secrets
-    /env.example        ← safe template shipped with the framework
+    .env           ← your settings and secrets
+    env.example    ← the template
     /Config
-      config.php        ← reads values from env
-    /public
+      config.php   ← reads .env
+    /public        ← all the web can see
       index.php
 ```
 
-### `.env`
+You create `app/.env` by copying `app/env.example` and filling in your own values, as in [Step 2 of Get FrankPHP Running](/getting-started/step-2).
 
-Contains real credentials and environment-specific values.
+---
 
-Example:
+## Every key
+
+**Required** keys must be present and not empty, or no page loads. A required key can hold a placeholder until you need it to work. Optional keys can be left out; FrankPHP then uses the default shown.
+
+### Application
+
+| Key | Required | What it's for |
+|-----|----------|---------------|
+| `APP_NAME` | No — default `FrankPHP App` | Your app's name. Also the sender name on emails, unless `MAIL_FROM_NAME` is set. |
+| `APP_TIMEZONE` | No — default `UTC` | The app's timezone, used when neither the user nor the tenant has one set. |
+
+### Database
+
+| Key | Required | What it's for |
+|-----|----------|---------------|
+| `DB_HOST` | Yes | The database server, almost always `localhost` on shared hosting. |
+| `DB_PORT` | No — default `3306` | The database port. |
+| `DB_NAME` | Yes | The database name. |
+| `DB_USER` | Yes | The database username. |
+| `DB_PASS` | Yes | The database password. |
+
+### Email
+
+FrankPHP has no passwords: everyone signs in with a code sent by email, so these must work before anyone can sign in. See [Getting Email Up and Running](/getting-started/getting-email-up-and-running).
+
+| Key | Required | What it's for |
+|-----|----------|---------------|
+| `MAIL_HOST` | Yes | Your mail provider's SMTP server. |
+| `MAIL_PORT` | No — default `587` | The SMTP port. |
+| `MAIL_USERNAME` | Yes | The SMTP username. |
+| `MAIL_PASSWORD` | Yes | The SMTP password. |
+| `MAIL_FROM_ADDRESS` | Yes | The address emails are sent from. |
+| `MAIL_FROM_NAME` | No — default `APP_NAME` | The sender name people see. |
+| `MAIL_REPLY_TO` | No — default `MAIL_FROM_ADDRESS` | Where replies go. |
+| `MAIL_SITE_ADMIN` | Yes | Your own address. FrankPHP emails it when someone new requests a sign-in code and when their account is created. |
+
+### Google and Microsoft sign-in
+
+| Key | Required | What it's for |
+|-----|----------|---------------|
+| `GOOGLE_CLIENT_ID` | No | With `GOOGLE_CLIENT_SECRET`, turns on the **Continue with Google** button on the sign-in screen. Leave both empty to keep it off. |
+| `GOOGLE_CLIENT_SECRET` | No | See `GOOGLE_CLIENT_ID`. |
+| `MICROSOFT_CLIENT_ID` | No | Not used yet. Microsoft sign-in is planned for a future release; setting it turns nothing on. |
+| `MICROSOFT_CLIENT_SECRET` | No | As `MICROSOFT_CLIENT_ID`. |
+
+### Other
+
+| Key | Required | What it's for |
+|-----|----------|---------------|
+| `CRON_SECRET` | Yes | A long random secret for scheduled jobs. Nothing in the framework reads it yet. |
+| `SYNCFUSION_LICENSE_KEY` | Yes | Your Syncfusion licence key, if you use their components. It is sent to the browser, so anyone signed in can see it in the page source. |
+
+---
+
+## How FrankPHP reads the file
+
+Before anything else happens, `framework/bootstrap.php` calls `Env::load()` on `app/.env` (step 1 of [The Run Cycle](/architecture/the-run-cycle)). Then `app/Config/config.php` picks out each value and builds the settings the rest of FrankPHP uses.
+
+The file is simple `KEY=value` lines:
 
 ```dotenv
-DB_HOST=localhost
-DB_NAME=your_db_name
-DB_USER=your_db_user
-DB_PASS=your_db_password
-APP_TIMEZONE=Europe/London
-APP_NAME=My App
+# A whole line starting with # is a comment
+APP_NAME="My App"          # quotes are optional, and are removed
+DB_PASS=abc==def           # everything after the first = is the value
 ```
 
-### `env.example`
-
-Contains the same keys but with placeholder values.
-
-This file **can** be distributed in the customer package because it acts as the setup template.
-
-Example:
-
-```dotenv
-DB_HOST=localhost
-DB_NAME=your_db_name
-DB_USER=your_db_user
-DB_PASS=your_db_password
-APP_TIMEZONE=Europe/London
-APP_NAME=My App
-```
-
-<Note>
-The real `.env` file should normally stay local to the server or development machine. The `env.example` file is what you ship.
-</Note>
+- If `app/.env` doesn't exist, FrankPHP stops with a message saying so.
+- If a required key is missing or empty, FrankPHP stops with a message naming the key.
+- If the server already sets a variable with the same name, the server's value wins and the line in `.env` is ignored.
 
 ---
 
-## How FrankPHP uses it
+## Adding your own setting
 
-The exact implementation stays simple.
-
-FrankPHP does not need a third-party environment package to get the core benefit. A small internal loader is used:
-
-1. read the `.env` file if it exists
-2. parse `KEY=value` lines
-3. place the values into `$_ENV` or a simple lookup array
-4. let `app/Config/config.php` read from those values
-
-That keeps the approach aligned with the framework’s design principles.
+1. Add the key to `app/env.example`, with a placeholder value.
+2. Add it, with the real value, to your `app/.env`.
+3. Read it in `app/Config/config.php` with `Env::get('YOUR_KEY', 'default')`, or with `Env::require('YOUR_KEY')` if there is no sensible default.
 
 ---
 
-## What changes in practice
+## Keeping `.env` private
 
-Instead of hardcoding credentials in `app/Config/config.php` as in the 1.0 release, that file becomes a normal configuration layer that reads from environment values.
+- **Never in the public folder.** `app/.env` sits outside `app/public/`, the only folder your web server should point to. See [Step 5 of Get FrankPHP Running](/getting-started/step-5).
+- **Never in git.** `app/.env` is listed in the project's `.gitignore`, so it isn't committed. Commit `app/env.example` instead.
+- **Never in a release.** The framework-only release zip contains `framework/` alone, and the build script also skips any `.env` file it finds.
 
-Conceptually, the responsibility changes like this:
-
-- `.env` holds secrets and environment-specific values
-- `app/Config/config.php` maps those values into the framework configuration array
-- the framework continues to read configuration in the usual way
-
-This keeps FrankPHP explicit while improving separation of concerns.
-
----
-
-## Release packaging reminder
-
-Your release process needs to account for `.env`.
-
-### Do not include
-
-- `.env`
-
-### Safe to include
-
-- `env.example`
-
-This is one of the reasons the release build process should be scripted. A build script can exclude `.env` automatically rather than relying on you to remember to delete it before creating a release package. The [Version Management feature](/features/version-management) enables exactly this sort of scripting to support release packaging without complexity.
-
----
-
-## How to use this in practice
-
-If your framework has been updated to support `.env`, the normal workflow becomes:
-
-## Step 1: Copy the example file
-
-Create a real `.env` based on the shipped template.
-
-```bash
-cp app/env.example app/.env
-```
-
-## Step 2: Fill in the real credentials
-
-Edit `app/.env` and add the correct values for the current environment.
-
-## Step 3: Leave `app/Config/config.php` as framework configuration
-
-Avoid editing it repeatedly just to swap credentials between environments.
-
-## Step 4: Keep `.env` out of release packages
-
-When publishing a GitHub Release, ship `env.example` but exclude `.env`.
-
----
-
-## Conclusion
-
-The move to `.env` is not about adding complexity. It is about keeping sensitive values in the right place and making FrankPHP easier to work with across local, staging, and production environments.
-
-Done properly, it gives you:
-
-- better separation of secrets from framework code
-- safer release packaging
-- cleaner configuration management
-- a setup process that feels familiar to PHP developers
-
-All while keeping the FrankPHP approach intact: explicit, dependency-light, and easy to reason about.
+<Warning>
+Treat `app/.env` like a password. Don't paste it into support requests, chats or AI assistants; share `app/env.example` instead.
+</Warning>

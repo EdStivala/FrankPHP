@@ -1,0 +1,64 @@
+---
+title: "Accessing The Site"
+description: "How someone new gets into your app: one screen, an emailed code, and their own tenant with them as its owner."
+---
+
+FrankPHP has one screen for signing in and signing up, at `/login`. There are no passwords. Everyone proves their email address with a 6-digit code — and if the address is new, FrankPHP creates their account and their own tenant there and then.
+
+---
+
+## The steps
+
+<Steps>
+  <Step title="Enter an email address">
+    At `/login` the person types their email address and selects **Email me a code**. The screen looks the same whether or not the address already has an account.
+  </Step>
+  <Step title="Get the code">
+    FrankPHP emails a **6-digit code**, valid for **15 minutes**. The email holds the code only, never a link.
+  </Step>
+  <Step title="Type the code">
+    On the **Check your email** screen they type the code and select **Continue**. Three wrong guesses cancel the code. **Didn't receive a code? Send a new one** sends a fresh one.
+  </Step>
+  <Step title="Agree to the terms (if you've turned them on)">
+    Only for a new address, and only if your app has turned on [Terms & Conditions acceptance](/concepts/users/terms-acceptance). The **One last step** screen asks them to tick *I have read and agree to the Terms & Conditions* and select **Continue**. Nothing is created until they do.
+  </Step>
+  <Step title="Account created">
+    For a new address, FrankPHP creates a new tenant, creates the person as its **owner**, and signs them in — with no "create an account?" question. For an address that already has an account, it simply signs them in.
+  </Step>
+  <Step title="Dashboard">
+    They land on their tenant's dashboard, at `/tenant/{tenant_id}/dashboard`, and stay signed in for 28 days as long as they keep using the app.
+  </Step>
+</Steps>
+
+<Note>
+**Continue with Google** works the same way, if you've turned it on. Google confirms the email address instead of a code, then steps 4 to 6 follow as above. See [Environment Configuration](/architecture/environment-configuration#google-and-microsoft-sign-in).
+</Note>
+
+---
+
+## Good to know
+
+<Tip>
+- **No email probing.** Known and new addresses behave exactly the same until the code is right, so nobody can use the screen to find out who has an account.
+- **One email, one account.** An email address can belong to only one user, in one tenant.
+- **Rate limiting.** At most 5 codes can be requested per hour from one IP address.
+- **All or nothing.** The tenant and the user are created together. If anything fails, neither is created and the person sees *"Account creation failed. Please try again."*
+- **Site-owner alerts.** The address in `MAIL_SITE_ADMIN` gets an email when an address with no account asks for a code, and another when the account is created. See [Getting Email Up and Running](/getting-started/getting-email-up-and-running).
+- **First login recorded.** Signing in straight after sign-up counts as the person's first login, so they don't show as "never logged in" on the [Users dashboard](/concepts/users/users-dashboard).
+- **Invited people skip all this.** Someone invited by email follows the link to a welcome screen, and their account is created when they select **Let me see**. No code is needed.
+</Tip>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    How the new tenant is named, and what `owner` means.
+  </Card>
+  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+    <span className="frank-chip">Cookbook</span>
+    Send new people somewhere other than a new tenant.
+  </Card>
+</CardGroup>

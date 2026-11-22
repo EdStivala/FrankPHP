@@ -1,0 +1,156 @@
+---
+title: "FrankPHP"
+sidebarTitle: "Home"
+description: "A lightweight, multi-tenant PHP framework for SaaS businesses. Runs on cheap shared hosting. AI-native from the ground up."
+icon: "house"
+mode: "frame"
+---
+
+import { TryIt, TryItTab } from "/snippets/try-it.jsx";
+
+<div className="frank-home">
+
+<div className="frank-masthead">
+  <img className="frank-masthead-logo" src="https://edstivala.co.uk/assets/img/frank/frank_logo.svg" alt="FrankPHP" />
+  <p className="frank-masthead-copy">
+    A lightweight, multi-tenant PHP framework for SaaS businesses. Runs on cheap shared hosting. AI-native from the ground up.
+  </p>
+</div>
+
+<TryIt
+  title="Try it"
+  subtitle="Install on your own server or shared host. Log in as a real user and build your own SaaS page in under 15 minutes."
+  footerLabel="Full step-by-step guide"
+  footerHref="/getting-started/get-frankphp-running"
+>
+  <TryItTab title="What you need">
+    - A web host running **PHP 8.5+**. Shared hosting is fine.
+    - A **MySQL** or **MariaDB** database.
+    - An **SMTP mail account**. Frank signs people in with a code sent by email.
+    - A domain or subdomain you can point at a folder.
+
+    That's all. No Composer, no Node, no build tools.
+  </TryItTab>
+
+  <TryItTab title="Get the software">
+    <Tabs>
+      <Tab title="Clone with Git">
+        ```bash
+        git clone https://github.com/EdStivala/frankphp-framework.git my-app
+        ```
+        You get both `framework/` and `app/`: a complete, working starting point.
+      </Tab>
+      <Tab title="Download a release">
+        1. Open the [Releases page](https://github.com/EdStivala/frankphp-framework/releases).
+        2. Download the **Source code** zip from the latest release.
+        3. Unzip it. You get both `framework/` and `app/`.
+      </Tab>
+    </Tabs>
+  </TryItTab>
+
+  <TryItTab title="Configure it">
+    Copy `app/env.example` to `app/.env`, then fill in your details. Scroll to see every setting. Database and mail are the ones you need first.
+
+    ```bash app/env.example
+    # ---------------------------------------------------------------
+    # APPLICATION
+    # ---------------------------------------------------------------
+    APP_NAME="Your App Name"
+    APP_TIMEZONE=UTC
+
+    # ---------------------------------------------------------------
+    # DATABASE
+    # ---------------------------------------------------------------
+    DB_HOST=localhost
+    DB_PORT=3306
+    DB_NAME=your_database_name
+    DB_USER=your_db_username
+    DB_PASS=your_db_password
+
+    # ---------------------------------------------------------------
+    # EMAIL (SMTP via PHPMailer)
+    # ---------------------------------------------------------------
+    MAIL_HOST=smtp.yourmailprovider.com
+    MAIL_PORT=587
+    MAIL_USERNAME=your_smtp_username
+    MAIL_PASSWORD=your_smtp_password
+    MAIL_FROM_ADDRESS=you@yourdomain.com
+    MAIL_FROM_NAME="Your Name or App Name"
+    MAIL_REPLY_TO=you@yourdomain.com
+
+
+    # ---------------------------------------------------------------
+    # EMAIL (Recipient of Platform Level Alert Messages)
+    # ---------------------------------------------------------------
+    MAIL_SITE_ADMIN=admin@yourdomain.com
+
+    # ---------------------------------------------------------------
+    # GOOGLE AND MICROSOFT SIGN-IN
+    # ---------------------------------------------------------------
+    GOOGLE_CLIENT_ID=
+    GOOGLE_CLIENT_SECRET=
+    MICROSOFT_CLIENT_ID=
+    MICROSOFT_CLIENT_SECRET=
+
+    # ---------------------------------------------------------------
+    # CRON
+    # ---------------------------------------------------------------
+    CRON_SECRET=replace_with_a_long_random_secret
+
+    # ---------------------------------------------------------------
+    # FRONTEND LICENCE KEYS
+    # Keys here are intentionally exposed to the browser at render
+    # time via a server-injected JS config block. Moving them here
+    # removes them from source control — the real security win.
+    # They are still visible to authenticated users in page source.
+    # ---------------------------------------------------------------
+    SYNCFUSION_LICENSE_KEY=your_syncfusion_key_here
+    ```
+
+    Then point your domain's document root at `app/public/` and visit the site. Frank creates its database tables on first visit. Enter your email, type the 6-digit code you're sent, and you're in as the owner of your first tenant.
+
+    <Note>Google and Microsoft sign-in are optional. Leave those keys blank until you need them.</Note>
+  </TryItTab>
+
+  <TryItTab title="Brief your AI">
+    Give your AI assistant these two files at the start of a session:
+
+    - `framework/codebase.md`: how Frank works, including routing, controllers, models and the rules your code must follow.
+    - `app/MYAPP.md`: the living record of your own app.
+
+    Claude, ChatGPT or any other assistant then writes code that fits Frank first time. [How AI briefing works](/concepts/ai-context-briefing).
+  </TryItTab>
+</TryIt>
+
+## Explore
+
+<CardGroup cols={2}>
+  <Card title="Docs" icon="book-open" href="/getting-started/meet-frank">
+    How Frank works: getting started, concepts, architecture and the changelog.
+  </Card>
+  <Card title="Reference" icon="code" href="/reference/index">
+    Exact technical detail, such as the `Clock` class.
+  </Card>
+  <Card title="Learn" icon="graduation-cap" href="/learn/index">
+    Tutorials that teach by doing, from PHP and HTML basics upwards.
+  </Card>
+  <Card title="Cookbooks" icon="utensils" href="/cookbooks/using-clock-in-your-apps">
+    Step-by-step guides to get one specific thing done.
+  </Card>
+</CardGroup>
+
+<div className="frank-cta">
+  <div className="frank-cta-text">
+    <img className="frank-cta-logo" src="https://edstivala.co.uk/assets/img/frank/frank_logo.svg" alt="FrankPHP" />
+    <h2 className="frank-cta-title">Ready to build?</h2>
+    <p className="frank-cta-copy">
+      Build your multi-tenant SaaS on your own hosting, free and MIT-licensed. <strong>No credit card needed.</strong>
+    </p>
+  </div>
+  <div className="frank-cta-actions">
+    <a className="frank-cta-btn frank-cta-primary" href="/getting-started/get-frankphp-running">Start for free</a>
+    <a className="frank-cta-btn frank-cta-secondary" href="#" aria-disabled="true">See our plans</a>
+  </div>
+</div>
+
+</div>

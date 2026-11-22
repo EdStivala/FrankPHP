@@ -1,0 +1,43 @@
+---
+title: "Point your subdomain"
+sidebarTitle: "5. Point your subdomain"
+description: "Point your subdomain at the app/public folder."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={5} />
+
+This is the most important configuration step, and it's worth understanding why.
+
+FrankPHP's web root is `app/public/` — a subdirectory inside `app/`, itself a subdirectory of `/yourproject`. This is the **only folder your subdomain should point to**. Your hosting control panel will have a setting for "Document Root" or "Web Root" when you create the subdomain — set it to:
+
+```
+/yourproject/app/public
+```
+
+So your full structure looks like this:
+
+```
+/yourproject
+  /framework
+    bootstrap.php
+    codebase.md
+    ...
+  /app
+    /.env               ← your environment credentials live here, outside the web root
+    /public             ← app.yoursite.com points HERE
+      index.php
+      /assets
+    /Config
+      config.php        ← framework/app config, not secrets
+    /Controllers
+    /Views
+    bootstrap.php
+```
+
+<Warning>
+**Why this matters:** By pointing your domain to `app/public` only, your `.env` file and all framework/application source files stay outside the web root. That means your credentials cannot be requested directly in the browser. This is a simple, effective security layer and follows the same broad approach used by larger PHP frameworks.
+</Warning>
+
+Once the subdomain is configured, point `app.yoursite.com` to `/yourproject/app/public`.

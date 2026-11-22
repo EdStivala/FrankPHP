@@ -1,0 +1,118 @@
+---
+title: "Middleware"
+description: "The checks FrankPHP runs before your code: what each one does, which to put on a route, and how to write your own."
+---
+
+import { Flow } from "/snippets/flow.jsx";
+
+Middleware are **checks that run before your own code**. Each route lists the ones it needs. FrankPHP runs them in that order, and any one of them can stop the request — for example, by sending someone who isn't signed in to the sign-in screen.
+
+Your controller only runs if every check passes. So by the time it runs, you already know who the person is and which tenant they're in.
+
+---
+
+## How it works
+
+Take a typical page route:
+
+```php
+$router->add('GET', '/tenant/{tenant_id}/customers', 'CustomerController@index', [$tm, $auth]);
+```
+
+`[$tm, $auth]` is the list of middleware. A request for that page goes through them like this:
+
+<Flow
+  start="A request for /tenant/1/customers"
+  steps={[
+    { label: "Check 1", title: "TenantMiddleware", text: "Does tenant 1 exist?", stops: ["Not found: \"Tenant not found\""] },
+    { label: "Check 2", title: "AuthMiddleware", text: "Is someone signed in, to tenant 1?", stops: ["Not signed in: sent to the sign-in screen", "Wrong tenant: \"Forbidden\""] },
+  ]}
+  end={{ label: "All checks passed", title: "Your controller runs", text: "With $request->tenant and $request->user ready to use" }}
+/>
+
+Each check also hands something on. TenantMiddleware puts the tenant on `$request->tenant`, and AuthMiddleware puts the signed-in person on `$request->user`, ready for your controller.
+
+---
+
+## The four built-in middleware
+
+FrankPHP gives you four, each with a short name you can use in `app/bootstrap.php`:
+
+| Short name | What it checks | If the check fails | What it hands on |
+|------------|----------------|--------------------|------------------|
+| `$tm` | The tenant in the address (`{tenant_id}`) exists | No tenant in the address: signed out. Unknown tenant: "Tenant not found". | `$request->tenant` |
+| `$auth` | Someone is signed in, and belongs to that tenant | Not signed in: sent to the sign-in screen. Wrong tenant: "Forbidden". | `$request->user` |
+| `$apiAuth` | The request carries a valid API key, for that tenant | Missing key: error 401. Wrong key or tenant: error 403. Both as JSON. | `$request->user` |
+| `$json` | Nothing — it never stops a request | — | The submitted data, on `$request->bodyParams` |
+
+<Note>
+`$apiAuth` looks for the key in an `X-Api-Key` header, or in `Authorization: Bearer …`. FrankPHP stores only a hash of each key, in `users.api_key_hash`. Issuing keys is up to your app.
+</Note>
+
+---
+
+## Which to put on a route
+
+| The route is… | Use | Example |
+|---------------|-----|---------|
+| A public page | `[]` | Your terms page |
+| A public form post | `[$json]` | The sign-in screen |
+| A page for signed-in people | `[$tm, $auth]` | The customer list |
+| A form post from signed-in people | `[$tm, $auth, $json]` | Saving a customer |
+| An API endpoint | `[$tm, $apiAuth, $json]` | An app calling your API |
+
+<Tip>
+Forgot `$json` on a form post? Your controller gets nothing in `$request->bodyParams`. The form's fields are still in `$request->post`.
+</Tip>
+
+---
+
+## Order matters
+
+FrankPHP runs the middleware in the order you list them, left to right. Keep the order in the table above: the tenant first, then who the person is, then the submitted data.
+
+---
+
+## Writing your own
+
+A middleware is a small class with one function, `handle()`. It either stops the request, or passes it on by calling `$next($request)`.
+
+```php
+<?php
+
+namespace App\Middleware;
+
+use Frank\Core\MiddlewareInterface;
+use Frank\Core\Request;
+use Frank\Core\Response;
+
+class ExampleMiddleware implements MiddlewareInterface
+{
+    public function handle(Request $request, callable $next)
+    {
+        if (/* your check fails */ false) {
+            Response::redirect('/somewhere');   // stop here
+        }
+
+        return $next($request);                 // pass it on
+    }
+}
+```
+
+Save it as `app/Middleware/ExampleMiddleware.php`, then use its name on a route, after the built-in ones:
+
+```php
+$router->add('GET', '/tenant/{tenant_id}/reports', 'ReportController@index', [$tm, $auth, 'ExampleMiddleware']);
+```
+
+A name with no namespace, like `'ExampleMiddleware'`, always means your own `App\Middleware` folder.
+
+<Warning>
+FrankPHP creates each middleware with `new`, passing nothing in. A middleware can't ask for services through its constructor the way a controller can.
+</Warning>
+
+---
+
+## See it in action
+
+[The Run Cycle](/architecture/the-run-cycle) follows one request through TenantMiddleware and AuthMiddleware, step by step.

@@ -73,7 +73,7 @@ $container->singleton(\Frank\Services\PasswordResetService::class, function ($c)
 });
 ```
 
-This is not a shortcut. This is the same explicit code you would have written inside the controller method anyway — just moved to the one place where it belongs. It's also not a file you should edit as part of application feature work — see [AI Context Briefing](/features/ai-context-briefing) on the framework/application ownership boundary. Your own application bindings follow the identical pattern, just registered in `app/bootstrap.php` instead — see "Extending the container for your own application" below.
+This is not a shortcut. This is the same explicit code you would have written inside the controller method anyway — just moved to the one place where it belongs. It's also not a file you should edit as part of application feature work — see [AI Context Briefing](/concepts/ai-context-briefing) on the framework/application ownership boundary. Your own application bindings follow the identical pattern, just registered in `app/bootstrap.php` instead — see "Extending the container for your own application" below.
 
 The result is a framework that now has a proper service wiring layer, aligned with how every major PHP framework handles this problem, while remaining completely transparent about what it is doing.
 
@@ -128,13 +128,13 @@ Seven services are registered in the container by `framework/bootstrap.php`. Six
 
 **`SignupService`** is registered as a singleton. It depends on `EmailService`, the `User` model and `SignupTenantResolver`, and reads the optional `$config['signup']` settings (Terms & Conditions acceptance, v2.1.0).
 
-**`SignupTenantResolver`** is registered as a singleton (v2.1.0). It decides which tenant and role a newly verified user gets. The default, `CreateTenantForSignup`, creates a new tenant with the user as `owner`. Unlike the others, this binding is **meant** to be replaced when your app needs a different rule — see [Customising Sign-up](/users/customising-signup).
+**`SignupTenantResolver`** is registered as a singleton (v2.1.0). It decides which tenant and role a newly verified user gets. The default, `CreateTenantForSignup`, creates a new tenant with the user as `owner`. Unlike the others, this binding is **meant** to be replaced when your app needs a different rule — see [Customising Sign-up](/cookbooks/customising-signup).
 
 **`UserService`** is registered as a singleton. It depends on the `User` model — owns business logic for the user record (`recordLogin()`, `saveSettings()`).
 
 **`TenantService`** is registered as a singleton. It depends on the `Tenant` model — owns business logic for the tenant record (`saveSettings()`).
 
-**`UserManagementService`** is registered as a singleton. It depends on the `User` and `Tenant` models — provides the data payload for the Users dashboard. Since v2.2.0 a `platform` user sees every tenant's users there. See [Roles and the Users Dashboard](/users/users-dashboard). If your app builds this service itself, pass `tenantModel: new \Frank\Models\Tenant()` as well.
+**`UserManagementService`** is registered as a singleton. It depends on the `User` and `Tenant` models — provides the data payload for the Users dashboard. Since v2.2.0 a `platform` user sees every tenant's users there. See [Roles and the Users Dashboard](/concepts/users/users-dashboard). If your app builds this service itself, pass `tenantModel: new \Frank\Models\Tenant()` as well.
 
 <Note>
 `EmailService`, `PasswordResetService`, `SignupService`, `UserService`, `TenantService`, and `UserManagementService` are framework-owned. They are documented in `codebase.md` §8.2 and §16.5. Do not modify these bindings as part of application feature work — if you need to change framework behaviour, that is a deliberate upgrade decision.
@@ -155,7 +155,7 @@ $container->override(\Frank\Services\Email\EmailService::class, function ($c) us
 This is a deliberate, visible replacement rather than something that can happen by accident. `Router::override(method, pattern, handler, middleware)` follows the identical pattern for replacing a framework-registered route.
 
 <Tip>
-For a real-world example, see [Customising Sign-up](/users/customising-signup), which uses `override()` to change which tenant a new user joins.
+For a real-world example, see [Customising Sign-up](/cookbooks/customising-signup), which uses `override()` to change which tenant a new user joins.
 </Tip>
 
 ---

@@ -1,0 +1,48 @@
+---
+title: "Configure FrankPHP with .env"
+sidebarTitle: "2. Configure .env"
+description: "Copy env.example to .env and add your app, database and mail settings."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={2} />
+
+Download the latest release from FrankPHP's [GitHub Releases page](https://github.com/EdStivala/frankphp-framework/releases) — grab the **Source code** zip (or `git clone` the repo directly). Either way you'll get a single project folder containing both `framework/` and `app/` as siblings — a complete working starting point.
+
+FrankPHP uses a standard `.env` file for environment-specific credentials. This keeps secrets out of your main config structure and makes FrankPHP feel more familiar if you've used other PHP frameworks before.
+
+Copy `app/env.example` to `app/.env`. The example file documents every key the application supports — including the mail credentials FrankPHP needs to email sign-in codes — so it's the safer starting point than creating one from scratch.
+
+Open `app/.env` and add your core app settings, database credentials and mail credentials:
+
+```env
+APP_NAME="My App"
+APP_TIMEZONE=Europe/London
+
+DB_HOST=localhost
+DB_NAME=your_db_name
+DB_USER=your_db_user
+DB_PASS=your_db_password
+
+MAIL_HOST=smtp.yourmailprovider.com
+MAIL_PORT=587
+MAIL_USERNAME=your_smtp_username
+MAIL_PASSWORD=your_smtp_password
+MAIL_FROM_ADDRESS=you@yourdomain.com
+MAIL_FROM_NAME="My App"
+MAIL_REPLY_TO=you@yourdomain.com
+MAIL_SITE_ADMIN=you@yourdomain.com
+```
+
+<Warning>
+**Mail is not optional.** FrankPHP has no passwords: everyone signs in with a 6-digit code sent by email, including you the first time. If mail isn't working, nobody can sign in. See [Getting Email Up and Running](/getting-started/getting-email-up-and-running) for the details of each mail key.
+</Warning>
+
+<Note>
+The `.env` file is for environment-specific settings only. Keep framework defaults and non-sensitive application settings in the normal config structure (`app/Config/config.php`). Use `.env` for things like database credentials, mail credentials, and other secrets.
+</Note>
+
+<Warning>
+Do not upload your local `.env` to a public web root. It lives at `app/.env`, outside the browser-accessible `app/public/` folder.
+</Warning>

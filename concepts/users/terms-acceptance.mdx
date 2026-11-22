@@ -1,0 +1,111 @@
+---
+title: "Terms & Conditions Acceptance"
+description: "Ask new people to accept your Terms & Conditions before their account is created, and record when they accepted and which version."
+---
+
+FrankPHP can ask new people to accept your Terms & Conditions before their account is created. It records **when** they accepted, and **which version** of your terms.
+
+---
+
+## Turning it on or off
+
+It's set in `app/Config/config.php` — not in `.env`:
+
+```php
+'signup' => [
+    'require_terms' => true,       // ask for, and record, acceptance
+    'terms_version' => '2026-10',  // your current terms version (optional)
+],
+```
+
+Change `terms_version` whenever your terms change.
+
+<Note>
+The framework itself leaves terms **off** unless this setting turns them on. **The starter app ships with it on**, so a new install asks for terms straight away. Set `require_terms` to `false` to turn it off.
+</Note>
+
+<Warning>
+**Upgrading from before 2.1.0?** Run `framework/sql/migrations/v2.1.0_signup_terms.sql` **before** turning this on: it adds the columns that hold the record. If they're missing, FrankPHP stops with an error naming the script. New installs already have them.
+</Warning>
+
+---
+
+## When people see it
+
+Only **someone new** sees the terms step — never a person who already has an account.
+
+- **Signing in with a new address:** after the code is right, the **One last step** screen asks them to tick the box. Nothing is created until they do. See step 4 of [Accessing The Site](/concepts/users/signup-flow).
+- **Accepting an invite:** the welcome screen includes the same tick box, before **Let me see**.
+
+The terms step stays open for 15 minutes after the code is checked. After that, the person starts again from `/login`.
+
+---
+
+## How it behaves
+
+| `require_terms` | The address | Result |
+|---|---|---|
+| Off, or not set | New or existing | No terms step. Nothing is recorded. |
+| On | Existing | Signed in. No terms step. |
+| On | New, box not ticked | The terms step again, with *"You must accept the Terms & Conditions to continue."* Nothing is created. |
+| On | New, box ticked | Tenant and owner created, acceptance recorded, signed in. |
+
+---
+
+## What gets recorded
+
+- **When:** the date and time (UTC) the person accepted. It's the same moment their account was created.
+- **Which version:** your `terms_version` at that moment.
+- Both are stored on the person's own user record.
+- People who joined before 2.1.0, or while terms were off, have no record. **Don't invent one for them.**
+- If your tick box also confirms something else, such as "I am over 18", the same record covers it.
+
+---
+
+## If you've changed the terms screen
+
+The starter app's terms screen, `app/Views/auth/login-terms.php`, already does all this. If you've made your own, check it:
+
+1. **Posts a tick box** named `terms_accepted`, with the value `1`.
+2. **Includes the security token:** `<?php include APP_VIEWS_DIR . '/partials/csrf-field.php'; ?>`
+3. **Shows `$error`** when the box wasn't ticked.
+
+<Note>
+**Checks in the browser are only a convenience.** A `required` tick box or a disabled button can be bypassed. FrankPHP does the real check on the server.
+</Note>
+
+---
+
+## The Terms page
+
+The starter app includes a **placeholder** Terms page at `/terms`, which the tick box links to.
+
+<Warning>
+**Replace the placeholder with your real Terms & Conditions before going live.** It's in `app/Views/auth/terms.php`.
+</Warning>
+
+---
+
+## Not available yet
+
+<Warning>
+These are not part of FrankPHP 3.0. Don't build on them yet.
+
+- **Asking existing users to accept again** when `terms_version` changes.
+- **A consent history** that keeps every acceptance, with details such as the IP address.
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Accessing The Site" icon="right-to-bracket" href="/concepts/users/signup-flow">
+    <span className="frank-chip">Docs</span>
+    Where the terms step fits in signing in.
+  </Card>
+  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+    <span className="frank-chip">Cookbook</span>
+    Restyle the sign-in screens without breaking terms acceptance.
+  </Card>
+</CardGroup>

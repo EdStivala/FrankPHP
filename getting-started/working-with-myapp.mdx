@@ -36,7 +36,7 @@ Think of MYAPP.md as the one document a new developer — or a new AI session �
 
 An AI agent working with an outdated MYAPP.md will make assumptions to fill the gaps. Those assumptions are often plausible-sounding and wrong in ways that are difficult to spot. The more accurate MYAPP.md is, the tighter and more correct the code it produces on the first pass.
 
-The principle behind FrankPHP's [AI-native design](/features/ai-context-briefing) is that documentation cost compounds in your favour over time — but only if the document stays accurate. A MYAPP.md that drifts from the codebase becomes a liability rather than an asset.
+The principle behind FrankPHP's [AI-native design](/concepts/ai-context-briefing) is that documentation cost compounds in your favour over time — but only if the document stays accurate. A MYAPP.md that drifts from the codebase becomes a liability rather than an asset.
 
 ---
 
@@ -109,7 +109,7 @@ MYAPP.md is a context document, not a substitute for readable code. It tells an 
 
 Business rules are the exception: if a rule is non-obvious from the schema or code (for example, "a session cannot be started if the user already has an incomplete one"), write it out fully. These are exactly the rules an agent is most likely to violate if they're only implicit in the code.
 
-The same goes for places where your app deliberately changes framework behaviour. For example, if you replace the sign-up rule (`SignupTenantResolver`) so new users join an existing tenant, or turn on `signup.require_terms`, record it in MYAPP.md. See [Customising Sign-up](/users/customising-signup).
+The same goes for places where your app deliberately changes framework behaviour. For example, if you replace the sign-up rule (`SignupTenantResolver`) so new users join an existing tenant, or turn on `signup.require_terms`, record it in MYAPP.md. See [Customising Sign-up](/cookbooks/customising-signup).
 
 ---
 
@@ -123,6 +123,6 @@ Add a glossary entry whenever you use a term that has a specific meaning in your
 
 ## Next steps
 
-- [AI Context Briefing](/features/ai-context-briefing) — how `framework/codebase.md` and `MYAPP.md` work together and why the separation matters
-- [Get FrankPHP Running](/getting-started/get-frankphp-running-rewritten) — if you haven't set up your project yet
+- [AI Context Briefing](/concepts/ai-context-briefing) — how `framework/codebase.md` and `MYAPP.md` work together and why the separation matters
+- [Get FrankPHP Running](/getting-started/get-frankphp-running) — if you haven't set up your project yet
 - [Environment Configuration](/architecture/environment-configuration) — managing credentials and config across environments

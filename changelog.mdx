@@ -2,6 +2,7 @@
 title: "Changelog"
 description: "A readable record of FrankPHP framework releases, including new capabilities, framework rules, fixes, and migration notes."
 rss: true
+icon: "list"
 ---
 
 # Changelog
@@ -23,7 +24,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
 
   Tenant isolation is unchanged. Only the logged-in user's role decides whether the all-tenants view is shown, and the list is built one tenant at a time, so there's still no query across the whole users table. There are no database or route changes.
 
-  New and updated guides: [Roles and the Users Dashboard](/users/users-dashboard), [Tenant Isolation and the Platform Role](/architecture/tenant-isolation), [Tenants, Ownership & Roles](/users/tenants-and-roles) and [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+  New and updated guides: [Roles and the Users Dashboard](/concepts/users/users-dashboard), [Tenant Isolation and the Platform Role](/architecture/tenant-isolation), [Tenants, Ownership & Roles](/concepts/users/tenants-and-roles) and [Upgrading to 2.2.0](/upgrading/upgrading-to-2-2-0).
 
   ### Added
 
@@ -37,7 +38,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
   - `codebase.md` describes the platform cross-tenant scope (§2, §13, §16) and adds the foundational principle "Reuse Before You Add" (§1).
 
   <Note>
-  **Upgrading:** replace `framework/` as usual, then copy the two view changes into your `app/Views/`. No migration is needed. If you skip the view changes, the dashboard still works without the Tenant column. See [Upgrading to 2.2.0](/users/upgrading-to-2-2-0).
+  **Upgrading:** replace `framework/` as usual, then copy the two view changes into your `app/Views/`. No migration is needed. If you skip the view changes, the dashboard still works without the Tenant column. See [Upgrading to 2.2.0](/upgrading/upgrading-to-2-2-0).
   </Note>
 
   <Warning>
@@ -54,7 +55,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
 
   The release also adds **opt-in Terms & Conditions acceptance** at sign-up. When enabled, FrankPHP refuses sign-ups that haven't accepted the terms, and records when they accepted and which version.
 
-  New guides: [Users Overview](/users/overview), [New User Sign-up Flow](/users/signup-flow), [Tenants, Ownership & Roles](/users/tenants-and-roles), [Terms & Conditions Acceptance](/users/terms-acceptance), [Customising Sign-up](/users/customising-signup) and [Upgrading to 2.1.0](/users/upgrading-to-2-1-0).
+  New guides: [Users Overview](/concepts/users/overview), [New User Sign-up Flow](/concepts/users/signup-flow), [Tenants, Ownership & Roles](/concepts/users/tenants-and-roles), [Terms & Conditions Acceptance](/concepts/users/terms-acceptance), [Customising Sign-up](/cookbooks/customising-signup) and [Upgrading to 2.1.0](/upgrading/upgrading-to-2-1-0).
 
   ### Added
 
@@ -81,7 +82,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
   - The starter verify page no longer auto-submits on the 6th digit. That could send a second request that logged the new user straight back out.
 
   <Warning>
-  **Behaviour change for existing apps:** new sign-ups create their own tenant as `owner`. If your app needs sign-ups to join an existing tenant, override `SignupTenantResolver` before deploying. Existing installs must run the migration **before** turning on Terms acceptance. See [Upgrading to 2.1.0](/users/upgrading-to-2-1-0).
+  **Behaviour change for existing apps:** new sign-ups create their own tenant as `owner`. If your app needs sign-ups to join an existing tenant, override `SignupTenantResolver` before deploying. Existing installs must run the migration **before** turning on Terms acceptance. See [Upgrading to 2.1.0](/upgrading/upgrading-to-2-1-0).
   </Warning>
 </Update>
 
@@ -95,7 +96,7 @@ For upgrade planning, read this page alongside **Revisions and Migrations**. The
   - The User Management dashboard now admits `platform` users as well as `admin` and `owner`.
 
   <Note>
-  `platform` is not cross-tenant yet. A platform user still can't open another tenant's pages, and Tenant Settings is still limited to `admin` and `owner`. See [Tenants, Ownership & Roles](/users/tenants-and-roles).
+  `platform` is not cross-tenant yet. A platform user still can't open another tenant's pages, and Tenant Settings is still limited to `admin` and `owner`. See [Tenants, Ownership & Roles](/concepts/users/tenants-and-roles).
   </Note>
 </Update>
 

@@ -1,0 +1,29 @@
+---
+title: "Sign in"
+sidebarTitle: "8. Sign in"
+description: "Sign in with an emailed code and create your first tenant."
+---
+
+import { InstallProgress } from "/snippets/install-progress.jsx";
+
+<InstallProgress step={8} />
+
+1. Enter your email address and select **Email me a code**.
+2. FrankPHP emails you a 6-digit code. It lasts 15 minutes.
+3. Type the code on the **Check your email** screen and select **Continue**.
+
+Because your address has no account yet, FrankPHP creates a new tenant with you as its **owner**, and signs you in. You'll land on the default dashboard at:
+
+```
+/tenant/1/dashboard
+```
+
+That's the whole sign-up: there is no separate sign-up page and no password to set. You stay signed in for 28 days, renewed while you keep using the app.
+
+<Note>
+**No code arriving?** Check your spam folder, then your mail settings in `app/.env` — see [Getting Email Up and Running](/getting-started/getting-email-up-and-running).
+</Note>
+
+<Note>
+Anyone else who signs in at `/login` with a new address gets **their own new tenant** and becomes its owner. See [Accessing The Site](/concepts/users/signup-flow).
+</Note>
