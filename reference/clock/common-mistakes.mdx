@@ -1,0 +1,46 @@
+---
+title: "Common Mistakes"
+description: "The date and time mistakes Clock is there to prevent, and how to move old date code over."
+---
+
+<Warning>
+- **Filtering with SQL `DATE(starts_at)`.** It uses the database's idea of the day, not the person's. Use [`utcRangeForLocalDate()`](/reference/clock/filtering-by-date).
+- **Saving local input as it was typed.** If someone in London types *14:30*, that's local time. [Convert it to UTC](/reference/clock/handling-input) first.
+- **Formatting dates in the view.** It spreads timezone rules through your templates, where they're hard to follow. [Prepare labels in the service](/reference/clock/showing-dates).
+- **Converting `DATE` values.** A birthday isn't a moment in time. Keep it as a `DATE`, and don't pass it through `Clock`.
+- **Calling `Clock` from a model.** Models are given UTC values by the service; they never call `Clock` themselves.
+</Warning>
+
+---
+
+## Moving old code over
+
+If your app already has its own helper, such as `utcNow()`, don't change every call at once. First make the helper call `Clock`:
+
+```php
+private function utcNow(): string
+{
+    return Clock::nowUtcString();
+}
+```
+
+Then replace the calls to it one by one, and delete the helper when none are left.
+
+<Tip>
+Record any deliberate exception to these rules in your `app/MYAPP.md`, under **Known Deviations**. See [Working with MYAPP.md](/getting-started/working-with-myapp).
+</Tip>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Clock" icon="clock" href="/reference/clock">
+    <span className="frank-chip">Reference</span>
+    The rules, and where to use Clock.
+  </Card>
+  <Card title="Methods" icon="list" href="/reference/clock/methods">
+    <span className="frank-chip">Reference</span>
+    Every Clock method.
+  </Card>
+</CardGroup>

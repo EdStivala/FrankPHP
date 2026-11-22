@@ -1,0 +1,73 @@
+---
+title: "Clock Methods"
+sidebarTitle: "Methods"
+description: "Every method of Frank\\Core\\Clock: what it takes and what it returns."
+---
+
+All methods are static: call them as `Clock::methodName()`.
+
+Times are passed and returned as strings in `Y-m-d H:i:s` (`Clock::STORAGE_FORMAT`) unless a method says otherwise. Display methods default to `Y-m-d H:i` (`Clock::DISPLAY_FORMAT`).
+
+---
+
+## The current time
+
+| Method | Returns |
+|---|---|
+| `nowUtc()` | The current moment in UTC, as a `DateTimeImmutable` |
+| `nowUtcString()` | The current moment in UTC, as a storage string |
+| `utcOffset(string $modifier)` | Now plus or minus an offset such as `'+1 hour'` or `'-30 days'`, as a `DateTimeImmutable`. An invalid offset throws `InvalidArgumentException`. |
+| `utcOffsetString(string $modifier)` | The same, as a storage string |
+
+---
+
+## Converting to and from UTC
+
+| Method | Returns |
+|---|---|
+| `toUtc(DateTimeInterface $dateTime)` | That moment in UTC, as a `DateTimeImmutable` |
+| `toUtcString(DateTimeInterface $dateTime)` | The same, as a storage string |
+| `parseUtc(?string $value)` | A stored UTC string as a `DateTimeImmutable`, or `null` for an empty value |
+| `localInputToUtc(string $localValue, string $timezone, ?string $inputFormat = null)` | What someone typed, in their timezone, as a UTC `DateTimeImmutable`. Empty or invalid input throws `InvalidArgumentException`. |
+| `localInputToUtcString(string $localValue, string $timezone, ?string $inputFormat = null)` | The same, as a storage string |
+| `utcToTimezone(string $utcValue, string $timezone)` | A stored UTC string in the given timezone, as a `DateTimeImmutable`. An empty value throws `InvalidArgumentException`. |
+| `formatUtcForTimezone(?string $utcValue, string $timezone, string $format = Clock::DISPLAY_FORMAT)` | A stored UTC string, formatted in the given timezone. An empty value returns `''`. |
+
+---
+
+## Timezones
+
+| Method | Returns |
+|---|---|
+| `resolveTimezone(?array $user = null, ?array $tenant = null, ?array $config = null)` | The first valid timezone of the user, the tenant, the app, then `UTC`. See [Which timezone](/reference/clock#which-timezone). |
+| `isValidTimezone(?string $timezone)` | `true` if PHP recognises the timezone |
+| `timezone(?string $timezone)` | A `DateTimeZone`. An invalid or empty value gives UTC. |
+
+---
+
+## Local dates
+
+| Method | Returns |
+|---|---|
+| `utcStartOfLocalDate(string $date, string $timezone)` | The UTC moment the local day starts (00:00:00) |
+| `utcEndOfLocalDate(string $date, string $timezone)` | The UTC moment the local day ends (23:59:59) |
+| `utcRangeForLocalDate(string $date, string $timezone)` | `['start' => …, 'end' => …]` in UTC, for one local day |
+| `utcRangeForLocalDates(string $startDate, string $endDate, string $timezone)` | `['start' => …, 'end' => …]` in UTC, from the start of the first local day to the end of the last |
+| `localDateFromUtc(string $utcValue, string $timezone)` | The local date, `Y-m-d`, of a stored UTC moment |
+| `todayForTimezone(string $timezone)` | Today's local date, `Y-m-d` |
+| `nowForTimezone(string $timezone)` | The local time now, as a `DateTimeImmutable` |
+| `nowForTimezoneString(string $timezone, string $format = Clock::DISPLAY_FORMAT)` | The local time now, formatted |
+
+<Warning>
+`nowForTimezone()` and `todayForTimezone()` are for showing things and filling in forms. Never save their values: save `nowUtcString()` instead.
+</Warning>
+
+---
+
+## Constants
+
+| Constant | Value |
+|---|---|
+| `Clock::UTC` | `'UTC'` |
+| `Clock::STORAGE_FORMAT` | `'Y-m-d H:i:s'` |
+| `Clock::DISPLAY_FORMAT` | `'Y-m-d H:i'` |

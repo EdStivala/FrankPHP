@@ -21,9 +21,9 @@ People sign in with a 6-digit code sent to their email, or with Google if you've
 
 | Role | Who has it | What the starter app lets them do |
 |------|------------|-----------------------------------|
-| `owner` | The person a tenant was created for | Tenant Settings, the Users screen, invite people to join their tenant, edit or remove its users, delete the tenant |
+| `owner` | The person a tenant was created for | Tenant Settings, the User Screen, invite people to join their tenant, edit or remove its users, delete the tenant |
 | `user` | Everyone else in the tenant, usually invited by the owner | Their own User Settings, and deleting their own account |
-| `platform` | You, and anyone else who runs the site | The Users screen for every tenant, edit or delete any tenant, invite someone to a brand-new tenant, and sign in as a tenant's owner to help them |
+| `platform` | You, and anyone else who runs the site | The User Screen for every tenant, edit or delete any tenant, invite someone to a brand-new tenant, and sign in as a tenant's owner to help them |
 
 <Note>
 The framework supplies the operations, such as deleting a user or changing a role. **Who may use them, and on which screen, is decided by your app.** The table shows the starter app's rules, which you can change in your own `app/`.
@@ -46,7 +46,7 @@ The framework supplies the operations, such as deleting a user or changing a rol
     <span className="frank-chip">Docs</span>
     An optional terms step for new sign-ups, recorded with the time and version.
   </Card>
-  <Card title="Roles and the Users Dashboard" icon="users" href="/concepts/users/users-dashboard">
+  <Card title="Roles and the User Screen" icon="users" href="/concepts/users/users-dashboard">
     <span className="frank-chip">Docs</span>
     Which users each role can see, including the platform all-tenants view.
   </Card>

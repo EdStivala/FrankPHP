@@ -1,0 +1,50 @@
+---
+title: "Send New People Somewhere Else"
+description: "Replace FrankPHP's rule for where new people go, so they join an existing tenant or get a different role."
+---
+
+**Why:** by default, someone signing in with a new address gets a brand-new tenant, as its owner. Your app might work differently — for example, every client might need to join their coach's existing tenant.
+
+<Steps>
+  <Step title="Write your own rule">
+    In `app/bootstrap.php`, replace the framework's rule with your own:
+
+    ```php
+    // Example: every new person joins tenant 1 as a regular user
+    $container->override(\Frank\Services\SignupTenantResolver::class, fn ($c) =>
+        new class implements \Frank\Services\SignupTenantResolver {
+            public function resolve(string $email, string $name): array {
+                return ['tenant_id' => 1, 'role' => 'user'];
+            }
+        }
+    );
+    ```
+
+    Your rule gets the person's **confirmed email** and **name**, and returns the **tenant** and **role** they should have.
+  </Step>
+  <Step title="Record it in MYAPP.md">
+    Add a line to your `app/MYAPP.md` saying your app places new people differently from the framework default, so you and your AI assistant both know. See [Working with MYAPP.md](/getting-started/working-with-myapp).
+  </Step>
+</Steps>
+
+<Tip>
+- **It's all or nothing.** Your rule runs inside the same step that creates the account. If anything fails, whatever your rule created is undone too.
+- **It covers every new sign-in,** whether the address was confirmed by a code or by Google.
+- **Invites ignore it.** An owner's invite always joins their tenant as a `user`, and a platform invite always creates a new tenant.
+- `override()` is FrankPHP's supported way to replace a framework setting from your own side. See [Dependency Injection](/architecture/dependency-injection).
+</Tip>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Accessing The Site" icon="right-to-bracket" href="/concepts/users/signup-flow">
+    <span className="frank-chip">Docs</span>
+    How signing in and signing up work, step by step.
+  </Card>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    How new tenants are named, and what each role means.
+  </Card>
+</CardGroup>

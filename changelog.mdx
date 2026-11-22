@@ -5,17 +5,55 @@ rss: true
 icon: "list"
 ---
 
-# Changelog
-
 This page records the public FrankPHP framework release history in a more readable form than the raw `CHANGELOG.md` file.
 
 Use it when you want to understand what changed between framework versions, whether a release affects existing installs, and which documentation or migration notes should be reviewed before upgrading.
 
 <Note>
-For upgrade planning, read this page alongside **Revisions and Migrations**. The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
+For upgrade planning, read this page alongside [Revisions and Migrations](/concepts/revisions-and-migrations). The changelog explains what changed. The migration guidance explains how to apply those changes safely to an existing application.
 </Note>
 
-<Update label="19 October 2026" description="v2.2.0" tags={["Current", "Users", "Roles", "Security"]}>
+<Update label="17 November 2026" description="v3.0.0" tags={["Current", "Breaking", "Sign-in", "Users", "Migration"]}>
+  ## Passwordless sign-in, invites and support access
+
+  FrankPHP 3.0.0 has **no passwords**. One screen, at `/login`, signs people in and signs new people up: they enter their email address and type the 6-digit code they're emailed. The code lasts 15 minutes, three wrong guesses cancel it, and at most 5 codes can be requested per hour from one IP address.
+
+  A known address with the right code is signed in. A new address with the right code gets its own tenant, as its owner, straight away. People stay signed in for 28 days while they keep using the app. **One email address is now one user, in one tenant.** A fresh install starts empty: there's no seeded tenant and no seeded users.
+
+  The release also adds **invites**, **Continue with Google**, **support access** for platform users, and user and tenant operations such as deleting a user or a tenant.
+
+  Guides for this release: [Accessing The Site](/concepts/users/signup-flow), [Tenants, Ownership & Roles](/concepts/users/tenants-and-roles), [Roles and the User Screen](/concepts/users/users-dashboard), [Terms & Conditions Acceptance](/concepts/users/terms-acceptance), [Tenant Isolation and the Platform Role](/architecture/tenant-isolation) and [Revisions and Migrations](/concepts/revisions-and-migrations).
+
+  ### Added
+
+  - **Sign-in by emailed code**, with new screens for typing the code (`/login/verify`) and accepting the terms (`/login/terms`).
+  - **Invites.** An owner invites someone to join their tenant as a `user`; a platform user invites someone to a brand-new tenant as its owner. Invites last 7 days and work once. The starter app adds an **Invite** button to the User Screen.
+  - **Continue with Google,** turned on by the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` settings. The Microsoft settings are placeholders for a future release.
+  - **Support access.** A platform user can sign in as a tenant's owner, with **Capture Tenant** and **Release Tenant**. No record is kept.
+  - **User and tenant operations** in `UserService` and `TenantService`: delete a user, change a role, delete a tenant. The framework enforces the safety rules; your app decides who may use them. The starter app has worked examples: Edit User, Edit Tenant, Delete my account and Delete tenant.
+  - `Session` (sign-in sessions and the security token), `Url`, `EmailAddress` and `AccountService`, each the one place for its job.
+
+  ### Changed
+
+  - The **terms step** now comes after the code is checked, and before the account is created.
+  - **Every form checks the security token,** including the account and tenant settings forms.
+  - `BaseModel::save()` now writes `updated_at` like any other column. Setting it is the service's job.
+  - The **User Screen** moved from the framework into the starter app, so your app can change it.
+  - The root address `/` takes a signed-in person to their own dashboard.
+
+  ### Removed
+
+  - Passwords, the forgot-password flow, and the separate `/signup` pages.
+  - The `admin` role. Anyone who still has it gets no more access than a `user`.
+  - The seeded tenant and seeded users.
+  - `EmailService::getBaseUrl()`. Use `Url::baseUrl()` instead.
+
+  <Warning>
+  **Breaking release.** Existing installs must run `framework/sql/migrations/v3.0.0_passwordless.sql`, copy in the new sign-in screens, and update any views, routes or settings that mention passwords or `/signup`. See [Upgrading to 3.0.0](/upgrading/upgrading-to-3-0-0) for every step.
+  </Warning>
+</Update>
+
+<Update label="19 October 2026" description="v2.2.0" tags={["Users", "Roles", "Security"]}>
   ## Platform users see every tenant's users
 
   FrankPHP 2.2.0 lets the platform operator see every user on the site. On the **Users** dashboard, a `platform` user now sees users from **all tenants**, with an extra **Tenant** column and an "All tenants" subtitle. The summary cards cover the same users. `owner` and `admin` still see their own tenant only.

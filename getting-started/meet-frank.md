@@ -50,7 +50,7 @@ FrankPHP is the battle-tested workhorse behind three distinct business models:
 ---
 
 ## Get Started
-The core framework will remain **FREE**. I am building out a plugin and template ecosystem, as well as training and support options that will be available commercially. The core framework delivers value in it's own right and will give you a robust SaaS scaffold to build from, for **FREE**.
+The core framework will remain **FREE**. I am building out a plugin and template ecosystem, as well as training and support options that will be available commercially. The core framework delivers value in its own right and will give you a robust SaaS scaffold to build from, for **FREE**.
 
 [Download the Latest Release](https://github.com/EdStivala/frankphp-framework/releases)
 

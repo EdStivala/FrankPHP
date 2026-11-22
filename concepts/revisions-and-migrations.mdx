@@ -46,7 +46,7 @@ Each of those has a supported way in, from your own side:
 |---|---|
 | Store more about a tenant or user | Create your own table with a `tenant_id` or `user_id` link back, plus your own model. See [Add a form](/cookbooks/add-a-form) for a table, model and service of your own. |
 | Change the wording of a framework email | Write your own template class and name it under `mail.templates` in `app/Config/config.php`. |
-| Change where new sign-ups go | Replace the framework's sign-up rule with your own, using `$container->override()` in `app/bootstrap.php`. See [Customising Sign-up](/cookbooks/customising-signup). |
+| Change where new sign-ups go | Replace the framework's sign-up rule with your own, using `$container->override()` in `app/bootstrap.php`. See [Send New People Somewhere Else](/cookbooks/send-new-people-elsewhere). |
 | Replace a framework route | Use `$router->override()` instead of `$router->add()` in `app/bootstrap.php`. |
 | Change the sign-in screens | Edit them freely: they're in `app/Views/auth/`, so they're already yours. |
 

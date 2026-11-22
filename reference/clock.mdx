@@ -1,13 +1,105 @@
 ---
 title: "Clock"
-description: "Frank\\Core\\Clock: the framework's single source of dates, times and timezones."
+description: "Frank\\Core\\Clock: FrankPHP's one place for dates, times and timezones."
 icon: "clock"
 ---
 
+`Frank\Core\Clock` gives every FrankPHP app the same rule for dates and times:
+
+> **UTC at rest. Local at the edges.**
+
+Store exact moments in UTC. Read what people type in their own timezone. Show dates in their timezone. Work out date filters in PHP, then send UTC to the database.
+
+```php
+use Frank\Core\Clock;
+```
+
+`Clock` is a set of static methods. It needs no setup and no container recipe.
+
+---
+
+## What Clock does — and doesn't
+
+`Clock` does the mechanical work: the current UTC time, offsets such as `+1 hour`, checking and choosing timezones, converting between local time and UTC, and the UTC boundaries of a local date.
+
+It doesn't decide what anything **means**. Labels such as *Today*, *Never* or *Overdue* are your app's decisions, so they belong in your services.
+
+---
+
+## Which timezone
+
+Most date code starts by choosing the timezone:
+
+```php
+$timezone = Clock::resolveTimezone($request->user, $request->tenant, $config);
+```
+
+It takes the first valid one of these:
+
+<Steps>
+  <Step title="The user's timezone">
+    From the user's own settings.
+  </Step>
+  <Step title="The tenant's timezone">
+    If the user hasn't set one.
+  </Step>
+  <Step title="The app's timezone">
+    `APP_TIMEZONE`, from `app/.env`.
+  </Step>
+  <Step title="UTC">
+    If none of the above is set, or valid.
+  </Step>
+</Steps>
+
 <Note>
-  **Placeholder.** The full method reference is written in the v3 content pass. For now, see the cookbook.
+Always pass the user, tenant and settings in. `Clock` never reads the session, the request or the database for itself.
 </Note>
 
-<Card title="Using Clock in your apps" icon="utensils" href="/cookbooks/using-clock-in-your-apps" horizontal>
-  A practical, step-by-step guide to Clock.
-</Card>
+---
+
+## Where to use it
+
+| Where | Use Clock? | Why |
+|---|:---:|---|
+| Service | Yes | The best place: conversions, labels and date filters |
+| Controller | Sometimes | Fine for converting what was posted, or simple steps |
+| Model | No | Models are given UTC values by the service, and never call `Clock` |
+| View | No | Views are given values ready to show |
+| SQL | No | SQL is given UTC values, and never works out local dates |
+
+<Warning>
+- Don't use `date()`, `time()` or `new DateTime('now')` for anything you save.
+- Don't use SQL's `NOW()` or `CURRENT_TIMESTAMP` for your app's timestamps.
+- Don't call `Clock` from a view.
+</Warning>
+
+---
+
+## In this section
+
+<CardGroup cols={2}>
+  <Card title="Methods" icon="list" href="/reference/clock/methods">
+    <span className="frank-chip">Reference</span>
+    Every Clock method, what it takes and what it returns.
+  </Card>
+  <Card title="Storing timestamps" icon="database" href="/reference/clock/storing-timestamps">
+    <span className="frank-chip">Reference</span>
+    The current time and expiry times, in UTC.
+  </Card>
+  <Card title="Handling input" icon="keyboard" href="/reference/clock/handling-input">
+    <span className="frank-chip">Reference</span>
+    Turning what people type into UTC — and when not to.
+  </Card>
+  <Card title="Showing dates" icon="eye" href="/reference/clock/showing-dates">
+    <span className="frank-chip">Reference</span>
+    Formatting stored times for people to read.
+  </Card>
+  <Card title="Filtering by date" icon="filter" href="/reference/clock/filtering-by-date">
+    <span className="frank-chip">Reference</span>
+    Finding records for a local day, or a range of days.
+  </Card>
+  <Card title="Common mistakes" icon="triangle-exclamation" href="/reference/clock/common-mistakes">
+    <span className="frank-chip">Reference</span>
+    What goes wrong, and how to move old code over.
+  </Card>
+</CardGroup>

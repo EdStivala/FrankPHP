@@ -1,0 +1,44 @@
+---
+title: "Restyle the Sign-in Screens"
+description: "Make FrankPHP's sign-in screens look like your product, without breaking the parts that make them work."
+---
+
+**Why:** the sign-in screens are the first thing people see, so you'll want them to look like your product. They belong to your app, in `app/Views/auth/`, so you can change them freely:
+
+| File | The screen |
+|---|---|
+| `login.php` | Enter your email, and **Continue with Google** |
+| `login-verify.php` | **Check your email:** type the code |
+| `login-terms.php` | **One last step:** accept the terms |
+| `invite-welcome.php` | The welcome screen an invite link opens |
+| `invite-expired.php` | Shown when an invite has expired or been used |
+| `terms.php` | Your Terms & Conditions page |
+
+Change the look as much as you like, but keep these working parts:
+
+<Warning>
+- **Every form keeps its security token:** `<?php include APP_VIEWS_DIR . '/partials/csrf-field.php'; ?>`. Without it, the form is refused.
+- **On the code screen, the "send a new code" form stays separate** from the code form, never inside it.
+- **The code is sent with a button, once.** Don't submit the form automatically when the sixth digit is typed. The starter screen blocks a second submission; keep that.
+- **The terms tick box** keeps the rules in [Terms & Conditions Acceptance](/concepts/users/terms-acceptance#if-youve-changed-the-terms-screen).
+- **The Google button** follows `$googleEnabled`, so it only works when Google sign-in is set up.
+</Warning>
+
+<Note>
+Upgraded from an older FrankPHP? A framework update never changes your screens. Compare yours with the starter app's when a release's notes say the screens changed.
+</Note>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Accessing The Site" icon="right-to-bracket" href="/concepts/users/signup-flow">
+    <span className="frank-chip">Docs</span>
+    How signing in and signing up work, step by step.
+  </Card>
+  <Card title="Tenants, Ownership & Roles" icon="building" href="/concepts/users/tenants-and-roles">
+    <span className="frank-chip">Docs</span>
+    How new tenants are named, and what each role means.
+  </Card>
+</CardGroup>

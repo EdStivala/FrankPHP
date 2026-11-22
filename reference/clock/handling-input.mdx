@@ -1,0 +1,55 @@
+---
+title: "Handling Input"
+description: "Turn the dates and times people type into UTC with Clock — and know when not to."
+---
+
+People type dates and times in their own timezone. Before you save one, decide what it is: an exact moment, or just a date.
+
+---
+
+## An exact moment: convert it to UTC
+
+A meeting at *6 June 2026, 14:30* is an exact moment. Convert it from the person's timezone to UTC before saving:
+
+```php
+$timezone = Clock::resolveTimezone($request->user, $request->tenant, $config);
+
+$startsAtUtc = Clock::localInputToUtcString(
+    $request->input('starts_at'),   // e.g. 2026-06-06 14:30
+    $timezone,
+    'Y-m-d H:i'
+);
+```
+
+Save `$startsAtUtc` in a `DATETIME` column. If the input is empty or doesn't match the format, `Clock` throws `InvalidArgumentException`, so check it first.
+
+<Warning>
+Never save the person's local time in a `DATETIME` column. Every FrankPHP timestamp is UTC.
+</Warning>
+
+---
+
+## Just a date: don't convert it
+
+Some values aren't moments at all — a birthday, an anniversary, a due date with no time. Save these in a `DATE` column, exactly as typed:
+
+```php
+$birthday = $request->input('birthday'); // e.g. 1990-04-12
+```
+
+There's no hour or timezone to convert, so don't pass them through `Clock`.
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Showing dates" icon="eye" href="/reference/clock/showing-dates">
+    <span className="frank-chip">Reference</span>
+    Formatting stored times for people to read.
+  </Card>
+  <Card title="Filtering by date" icon="filter" href="/reference/clock/filtering-by-date">
+    <span className="frank-chip">Reference</span>
+    Finding records for a local day.
+  </Card>
+</CardGroup>

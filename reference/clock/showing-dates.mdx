@@ -1,0 +1,78 @@
+---
+title: "Showing Dates"
+description: "Format stored UTC times in each person's timezone with Clock, ready for your views."
+---
+
+Stored times are UTC. Before anyone sees one, convert it to their timezone — in your service, never in the view.
+
+---
+
+## Format a stored time
+
+```php
+$timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+$lastSeenLabel = $row['last_seen_at']
+    ? Clock::formatUtcForTimezone($row['last_seen_at'], $timezone, 'j M Y, H:i')
+    : 'Never seen';
+```
+
+The view just shows it:
+
+```php
+<?= htmlspecialchars($lastSeenLabel) ?>
+```
+
+Choosing *Never seen* when there's no value is your app's decision, so it's made in the service too.
+
+---
+
+## Prepare everything in the service
+
+The best pattern: the service returns every date ready to show, and the view only echoes them.
+
+```php
+public function getBookingSummary(int $tenantId, int $bookingId, array $user, array $tenant, array $config): ServiceResult
+{
+    $booking = Booking::find($bookingId, $tenantId);
+    if ($booking === null) {
+        return ServiceResult::failure('Booking not found.', 'not_found');
+    }
+
+    $timezone = Clock::resolveTimezone($user, $tenant, $config);
+
+    return ServiceResult::success('Booking loaded.', [
+        'customerName'  => $booking->customer_name,
+        'startsAtLabel' => Clock::formatUtcForTimezone($booking->starts_at, $timezone, 'j M Y, H:i'),
+    ]);
+}
+```
+
+---
+
+## Today's date, for a form
+
+To fill in a date field with today's date:
+
+```php
+$defaultDate = Clock::todayForTimezone($timezone);
+```
+
+<Warning>
+Use `todayForTimezone()` and `nowForTimezone()` for showing things and filling in forms only. Never save their values.
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Filtering by date" icon="filter" href="/reference/clock/filtering-by-date">
+    <span className="frank-chip">Reference</span>
+    Finding records for a local day, or a range of days.
+  </Card>
+  <Card title="Common mistakes" icon="triangle-exclamation" href="/reference/clock/common-mistakes">
+    <span className="frank-chip">Reference</span>
+    What goes wrong with dates.
+  </Card>
+</CardGroup>

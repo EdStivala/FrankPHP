@@ -1,0 +1,59 @@
+---
+title: "Storing Timestamps"
+description: "Create UTC timestamps and expiry times for your database with Clock."
+---
+
+Every moment your app saves — when something was created, changed or expires — is stored in UTC, in a `DATETIME` column.
+
+---
+
+## The current time
+
+Use this when you add or change a row:
+
+```php
+$customer->created_at = Clock::nowUtcString();
+```
+
+Setting `created_at` and `updated_at` is your service's job. FrankPHP's models never set them for you. See [Add a form](/cookbooks/add-a-form) for a full example.
+
+---
+
+## An expiry time
+
+Use `utcOffsetString()` for anything that runs out, or for a cutoff:
+
+```php
+$expiresAt = Clock::utcOffsetString('+7 days');   // a link that lasts a week
+$cutoff    = Clock::utcOffsetString('-30 days');  // anything older than a month
+```
+
+Pass these to SQL as values, never as SQL date functions:
+
+```php
+$stmt = $pdo->prepare('DELETE FROM share_links WHERE tenant_id = :tenant_id AND expires_at < :now');
+$stmt->execute([
+    'tenant_id' => $tenantId,
+    'now'       => Clock::nowUtcString(),
+]);
+```
+
+<Warning>
+- Don't use `date('Y-m-d H:i:s')`, `time()` or `new DateTime('now')` for saved values.
+- Don't use `NOW()` or `CURRENT_TIMESTAMP` in SQL for your app's timestamps.
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Handling input" icon="keyboard" href="/reference/clock/handling-input">
+    <span className="frank-chip">Reference</span>
+    Turning what people type into UTC.
+  </Card>
+  <Card title="Methods" icon="list" href="/reference/clock/methods">
+    <span className="frank-chip">Reference</span>
+    Every Clock method.
+  </Card>
+</CardGroup>

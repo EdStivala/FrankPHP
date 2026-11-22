@@ -3,7 +3,7 @@ title: "Tenants, Ownership & Roles"
 description: "How FrankPHP creates and names a tenant for every new person, how others join it, and what the owner, user and platform roles mean."
 ---
 
-**Someone signing in with a new email address gets their own new tenant**, and becomes its **owner**. To send new people somewhere else instead, see [Customising Sign-up](/cookbooks/customising-signup).
+**Someone signing in with a new email address gets their own new tenant**, and becomes its **owner**. To send new people somewhere else instead, see [Send New People Somewhere Else](/cookbooks/send-new-people-elsewhere).
 
 ---
 
@@ -51,7 +51,7 @@ The invite arrives by email and lasts 7 days. The person follows the link, selec
 | User Settings (their own name and timezone) | ✓ | ✓ | ✓ |
 | Delete their own account | | ✓ | |
 | Tenant Settings | ✓ | | |
-| Users screen | Own tenant | | All tenants |
+| User Screen | Own tenant | | All tenants |
 | Invite people | To own tenant | | To a new tenant |
 | Edit or remove other users | Own tenant | | Any tenant |
 | Delete a tenant | Own tenant | | Any tenant |
@@ -86,7 +86,7 @@ Deleting a tenant deletes every user in it, too.
 ## Next
 
 <CardGroup cols={2}>
-  <Card title="Roles and the Users Dashboard" icon="users" href="/concepts/users/users-dashboard">
+  <Card title="Roles and the User Screen" icon="users" href="/concepts/users/users-dashboard">
     <span className="frank-chip">Docs</span>
     Which users each role can see.
   </Card>
@@ -94,7 +94,7 @@ Deleting a tenant deletes every user in it, too.
     <span className="frank-chip">Docs</span>
     Record that new owners accepted your terms.
   </Card>
-  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+  <Card title="Send New People Somewhere Else" icon="route" href="/cookbooks/send-new-people-elsewhere">
     <span className="frank-chip">Cookbook</span>
     Change which tenant and role a new person gets.
   </Card>

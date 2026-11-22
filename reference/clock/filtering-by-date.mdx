@@ -1,0 +1,66 @@
+---
+title: "Filtering by Date"
+description: "Find records for a person's local day, or range of days, with Clock's UTC boundaries."
+---
+
+Someone asks for everything on *6 June 2026*. Their 6 June doesn't start and end at the same moment as UTC's, so you can't simply match the date in SQL. Work out the UTC start and end of their day in PHP, then query between them.
+
+---
+
+## One local day
+
+```php
+$timezone = Clock::resolveTimezone($user, $tenant, $config);
+$range    = Clock::utcRangeForLocalDate('2026-06-06', $timezone);
+
+$stmt = $pdo->prepare('
+    SELECT * FROM bookings
+    WHERE tenant_id = :tenant_id
+      AND starts_at BETWEEN :start_utc AND :end_utc
+    ORDER BY starts_at
+');
+$stmt->execute([
+    'tenant_id' => $tenantId,
+    'start_utc' => $range['start'],
+    'end_utc'   => $range['end'],
+]);
+```
+
+---
+
+## A range of local days
+
+For reports, calendars and exports:
+
+```php
+$range = Clock::utcRangeForLocalDates(
+    $request->input('from_date'),
+    $request->input('to_date'),
+    $timezone
+);
+```
+
+`start` is the start of the first day and `end` is the end of the last, both in UTC. Use them in the query the same way.
+
+<Tip>
+This keeps clock changes and timezone offsets out of SQL, and inside `Clock`, which handles them for you.
+</Tip>
+
+<Warning>
+Don't filter with SQL's `DATE(starts_at)`. It uses the database's idea of the day, not the person's.
+</Warning>
+
+---
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Common mistakes" icon="triangle-exclamation" href="/reference/clock/common-mistakes">
+    <span className="frank-chip">Reference</span>
+    What goes wrong with dates.
+  </Card>
+  <Card title="Methods" icon="list" href="/reference/clock/methods">
+    <span className="frank-chip">Reference</span>
+    Every Clock method.
+  </Card>
+</CardGroup>

@@ -1,273 +1,149 @@
 ---
 title: "Getting Email Up and Running"
-description: "Configure transactional email services for FrankPHP using SMTP via PHPMailer and understand the system communication architecture."
+description: "Set up FrankPHP's email, check it works, and change the wording of the emails it sends."
 ---
 
-# Getting Email Up and Running
-
-By the end of this guide, you will have configured transactional email services for FrankPHP. You'll ensure that system-level triggers (like platform alerts and user signups) work out of the box, and you'll understand how to dispatch emails down to your individual tenant users.
-
-FrankPHP relies on a robust, zero-dependency SMTP configuration mapped through standard PHP environment variables. Like the database setup, it requires no external package builders.
+FrankPHP has no passwords: everyone signs in with a code sent by email. **If email isn't working, nobody can sign in** — including you. This page sets it up, checks it, and shows how to put the emails in your own words.
 
 ---
 
-## Step 1: Understand the Email Architecture
+## The emails FrankPHP sends
 
-Before writing config values, it's essential to understand how FrankPHP routes communication. The framework differentiates between two distinct directions of flow:
-
-* **Platform-to-Owner (Upward/System Alerts):** Automated operational triggers sent from FrankPHP directly to you (the `MAIL_SITE_ADMIN`), or automated alerts sent to a Tenant Owner when significant structural events happen.
-* **Owner-to-User (Downward/Transactional):** Functional, programmatic transactional emails driven by application events—such as password resets, verification codes, or a Tenant Owner pushing invitations down to new individual users.
+| Email | Sent to | When | Subject |
+|---|---|---|---|
+| **Sign-in code** | The person signing in | They ask for a code at `/login` | Your sign-in code |
+| **Invite** | The person invited | An owner or platform user invites them | You've been invited |
+| **New sign-up alert** | You, at `MAIL_SITE_ADMIN` | Someone new asks for a code, and again when their account is created | New Signup Alert |
 
 <Warning>
-**Transactional Only:** FrankPHP’s email architecture is designed strictly for **transactional emails** (system notifications, invites, resets). It is not built or intended for marketing newsletters, sequence blasts, or bulk promotional tracking.
+**Transactional email only.** FrankPHP's email is built for messages people need, like codes and invites. It isn't made for newsletters or bulk marketing.
 </Warning>
 
 ---
 
-## Step 2: Configure Your Environment Credentials
+## Set up your mail settings
 
-Open your `app/.env` file (which you created during the initial server installation). You will find the SMTP configuration block waiting for your credentials:
+Your mail settings live in `app/.env`, which you filled in at [Step 2](/getting-started/step-2). You'll need these from your email provider — your hosting company's mail server, or a service such as Postmark, Mailgun or Amazon SES:
 
-```php
-# ---------------------------------------------------------------
-# EMAIL (SMTP via PHPMailer)
-# ---------------------------------------------------------------
-MAIL_HOST=smtp.yourmailprovider.com
-MAIL_PORT=587
-MAIL_USERNAME=your_smtp_username
-MAIL_PASSWORD=your_smtp_password
-MAIL_FROM_ADDRESS=you@yourdomain.com
-MAIL_FROM_NAME="Your App Name"
-MAIL_REPLY_TO=you@yourdomain.com
+- **`MAIL_HOST`** and **`MAIL_PORT`** — the provider's SMTP server and port
+- **`MAIL_USERNAME`** and **`MAIL_PASSWORD`** — your SMTP login
+- **`MAIL_FROM_ADDRESS`** and **`MAIL_FROM_NAME`** — who the emails come from
+- **`MAIL_REPLY_TO`** — where replies go
+- **`MAIL_SITE_ADMIN`** — your own address, for the sign-up alerts
 
-# ---------------------------------------------------------------
-# EMAIL (Recipient of Platform Level Alert Messages)
-# ---------------------------------------------------------------
-MAIL_SITE_ADMIN=admin@yourdomain.com
-```
-
-### Configuration Checklist
-
-* **`MAIL_HOST` & `MAIL_PORT`:** Provided by your SMTP provider (Mailgun, Postmark, SendGrid, Amazon SES, or your shared hosting mail server).
-* **`MAIL_FROM_ADDRESS`:** The address your users see. Ensure this matches your domain SPF/DKIM records to guarantee high deliverability.
-* **`MAIL_SITE_ADMIN`:** The absolute root address where you want to receive framework-level alerts (e.g., system exceptions, security flags, or platform notification updates).
-
----
-
-## Step 3: Test a Native Framework Flow (Password Reset)
-
-Now that your credentials live securely in `app/.env`, the framework's single SMTP gateway (`Frank\Services\Email\EmailService`) will automatically inject them when spawned by the Dependency Injection Container.
-
-Let’s verify it works by unlocking the **Forgot My Password** workflow:
-
-1. Navigate to your app login screen (`https://app.yoursite.com`).
-2. Click **Forgot my password**.
-3. Input the seed user email: `owner@tenant1.com`.
-4. Check your inbox.
+Every key, with its default, is in [Environment Configuration](/architecture/environment-configuration#email).
 
 <Tip>
-**Optional: test the sign-up flow too.** Go to `/signup`, register with an email address you can read, enter the 6-digit code, and you should land on the dashboard of a brand-new tenant. The `MAIL_SITE_ADMIN` address gets two alerts: one when the code is requested, and one when the account is created that names the new tenant. See [New User Sign-up Flow](/concepts/users/signup-flow).
+Send from an address on your own domain, and set up the SPF and DKIM records your provider asks for. Emails are much less likely to land in spam.
 </Tip>
 
 ---
 
-## Step 4: Customising Email Templates
+## Check it works
 
-FrankPHP avoids complex, bloated templating engines. Following the framework philosophy of *"explicit over magic,"* email layouts are constructed dynamically using standard PHP objects.
+<Steps>
+  <Step title="Ask for a sign-in code">
+    Go to `/login`, enter an email address you can read, and select **Email me a code**.
+  </Step>
+  <Step title="Check your inbox">
+    The code should arrive shortly. Type it in to sign in.
+  </Step>
+  <Step title="Check the alerts">
+    If the address was new, `MAIL_SITE_ADMIN` gets two **New Signup Alert** emails: one when the code was asked for, and one when the account was created.
+  </Step>
+  <Step title="Try an invite (optional)">
+    As an owner, open the **User Screen**, select **Invite**, and invite another address you can read.
+  </Step>
+</Steps>
 
-`EmailService` triggers three framework-owned flows directly — signup verification, password reset, and the platform-owner signup alert — each rendered by a default template class shipped inside `framework/Services/Email/Templates/`. The platform-owner alert is sent to `MAIL_SITE_ADMIN` twice per sign-up: when a code is requested, and when the account is created. From v2.1.0 the second alert's `$event` text includes the new tenant's name and the user's role.
-
-<Warning>
-**Never edit those template files directly.** They live inside `framework/`, so any change you make there is silently lost the next time you update the framework. Override the template *class* instead — via config.
-</Warning>
-
-Add an entry to `mail.templates` in `app/Config/config.php`, mapping the flow you want to change to your own replacement class:
-
-```php
-// app/Config/config.php
-'mail' => [
-    // ...existing keys...
-    'templates' => [
-        // 'signup_verification'         => \App\Email\Templates\MySignupVerificationTemplate::class,
-        'password_reset'                 => \App\Email\Templates\MyPasswordResetTemplate::class,
-        // 'platform_owner_signup_alert'  => \App\Email\Templates\MyPlatformOwnerAlertTemplate::class,
-    ],
-],
-```
-
-Your override class must implement the same static methods, with the same arguments, as the framework default it replaces:
-
-| Flow key | Required static signature |
-|---|---|
-| `signup_verification` | `buildHtml(string $email, string $code, int $expiry): string` and `buildText(string $email, string $code, int $expiry): string` |
-| `password_reset` | `buildHtml(string $name, string $resetUrl): string` and `buildText(string $name, string $resetUrl): string` |
-| `platform_owner_signup_alert` | `buildHtml(string $email, string $event): string` and `buildText(string $email, string $event): string` |
-
-For example, a password reset override:
-
-```php
-// app/Email/Templates/MyPasswordResetTemplate.php
-namespace App\Email\Templates;
-
-class MyPasswordResetTemplate
-{
-    public static function buildHtml(string $name, string $resetUrl): string
-    {
-        return "
-            <div style='font-family: sans-serif; padding: 20px; color: #1f2937;'>
-                <h2>Hello, " . htmlspecialchars($name) . "</h2>
-                <p>We received a request to reset your password for your account.</p>
-                <p><a href='" . htmlspecialchars($resetUrl) . "' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block;'>Reset Password</a></p>
-                <p>If you did not make this request, you can safely ignore this email.</p>
-            </div>
-        ";
-    }
-
-    public static function buildText(string $name, string $resetUrl): string
-    {
-        return "Hello {$name},\n\nReset your password: {$resetUrl}\n\nIf you did not request this, ignore this email.";
-    }
-}
-```
-
-The override class can live anywhere under `App\` — it doesn't need to sit in any particular folder.
+<Check>
+If the code arrives, email is working, and anyone can sign in.
+</Check>
 
 <Note>
-A fresh install's `templates` map is empty, so this is entirely opt-in. Nothing needs configuring for a new project to send correct, framework-default email — you only add an entry here once you want your own wording or branding on one of the three framework flows.
+**No code arriving?** Check your spam folder first. Then check each `MAIL_` setting in `app/.env` against your provider's details: the server, port, username and password must all match exactly.
 </Note>
 
 ---
 
-## Step 5: How to Trigger an Owner-to-User Notification
+## Put the emails in your own words
 
-When building new features, you will often need to let a Tenant Owner push communications downward to their users. `EmailService` only ships the three framework-owned flows above — for a new email type, the pattern is an **application-owned service** that builds its own message and calls `EmailService::send()` directly. Following the *"delegate, don't decide"* pattern, your controllers should never handle email construction themselves.
+Each email's wording comes from a template class in `framework/Services/Email/Templates/`.
 
-Here's the full pattern for a custom "invite a team member" notification.
+<Warning>
+**Never edit those templates directly.** They're in `framework/`, so an update replaces them and your changes are lost. Replace the template from your own side instead.
+</Warning>
 
-**`app/Services/NotificationService.php`**
+<Steps>
+  <Step title="Write your own template class">
+    It needs the same two functions, with the same arguments, as the one it replaces. For the sign-in code:
 
-```php
-<?php
+    ```php
+    // app/Email/Templates/MyLoginCodeTemplate.php
+    namespace App\Email\Templates;
 
-namespace App\Services;
-
-use Frank\Services\Email\EmailService;
-use Frank\Services\Email\EmailMessage;
-use Frank\Services\Email\EmailResult;
-
-class NotificationService
-{
-    public function __construct(
-        private EmailService $emailService,
-        private string $mailUsername,
-        private string $mailPassword,
-        private string $fromEmail,
-        private string $fromName
-    ) {}
-
-    public function sendUserInvite(string $email, string $name, string $inviteUrl): EmailResult
+    class MyLoginCodeTemplate
     {
-        $htmlBody = "
-            <div style='font-family: sans-serif; padding: 20px; color: #1f2937;'>
-                <h2>You're invited</h2>
-                <p>" . htmlspecialchars($name) . " has invited you to join their team on the app.</p>
-                <p><a href='" . htmlspecialchars($inviteUrl) . "'>Accept invitation</a></p>
-            </div>
-        ";
-
-        return $this->emailService->send(new EmailMessage(
-            credentialsUserName:   $this->mailUsername,
-            credentialsUserSecret: $this->mailPassword,
-            to:       $email,
-            toName:   $name,
-            subject:  "You're invited to join the team",
-            htmlBody: $htmlBody,
-            from:     $this->fromEmail,
-            fromName: $this->fromName,
-        ));
-    }
-}
-```
-
-**In `app/bootstrap.php`:**
-
-```php
-$container->singleton(\App\Services\NotificationService::class, function ($c) use ($config) {
-    return new \App\Services\NotificationService(
-        $c->make(\Frank\Services\Email\EmailService::class),
-        $config['mail']['username'],
-        $config['mail']['password'],
-        $config['mail']['from_address'],
-        $config['mail']['from_name'],
-    );
-});
-
-$container->bind(\App\Controllers\TeamInvitationController::class, function ($c) {
-    return new \App\Controllers\TeamInvitationController(
-        $c->make(\App\Services\NotificationService::class)
-    );
-});
-```
-
-**`app/Controllers/TeamInvitationController.php`**
-
-```php
-<?php
-
-namespace App\Controllers;
-
-use Frank\Core\BaseController;
-use Frank\Core\Request;
-use Frank\Core\Response;
-use App\Services\NotificationService;
-
-class TeamInvitationController extends BaseController
-{
-    public function __construct(
-        private NotificationService $notificationService
-    ) {}
-
-    public function sendInvite(Request $request, array $params): mixed
-    {
-        // 1. Fetch targeted recipient details from form input
-        $targetEmail = $request->input('email');
-        $targetName  = $request->input('name');
-        $inviteUrl   = "https://app.yoursite.com/signup?invite=token123";
-
-        // 2. Instruct your own notification service to build and dispatch the email
-        $result = $this->notificationService->sendUserInvite($targetEmail, $targetName, $inviteUrl);
-
-        if ($result->success) {
-            return Response::redirect("/tenant/{$request->tenant['id']}/team?success=invited");
+        public static function buildHtml(string $email, string $code, int $expiry): string
+        {
+            return '<p>Your code for My App is <strong>' . htmlspecialchars($code) . '</strong>.</p>'
+                 . '<p>It lasts ' . $expiry . ' minutes.</p>';
         }
 
-        // 3. Gracefully return execution errors to the view layer
-        return $this->view('team/invite', [
-            'error' => 'Could not send invitation: ' . $result->error
-        ]);
+        public static function buildText(string $email, string $code, int $expiry): string
+        {
+            return "Your code for My App is {$code}. It lasts {$expiry} minutes.";
+        }
     }
-}
-```
+    ```
+
+    The class can live anywhere under `App\`.
+  </Step>
+  <Step title="Name it in your config">
+    In `app/Config/config.php`, add it to `templates` inside the `mail` settings:
+
+    ```php
+    'mail' => [
+        // ...the existing keys...
+        'templates' => [
+            'login_code' => \App\Email\Templates\MyLoginCodeTemplate::class,
+        ],
+    ],
+    ```
+  </Step>
+</Steps>
+
+Each email has its own key, and its template needs these two functions:
+
+| Email | Key | Its two functions |
+|---|---|---|
+| Sign-in code | `login_code` | `buildHtml(string $email, string $code, int $expiry)` and `buildText(…)` with the same arguments. `$expiry` is in minutes. |
+| Invite | `invite` | `buildHtml(string $email, string $inviteUrl, int $expiryDays)` and `buildText(…)` |
+| New sign-up alert | `platform_owner_signup_alert` | `buildHtml(string $email, string $event)` and `buildText(…)` |
+
+Both functions return the email's content as a string. The subject lines stay as they are.
+
+<Info>
+The sign-in code email must carry the code only — never a link.
+</Info>
 
 ---
 
-## What Just Happened Behind the Scenes
+## Sending your own emails
 
-Every time FrankPHP distributes an email:
-
-1. **Context Handoff:** The controller receives an interactive action context and passes raw business targets to your injected application-owned service (here, `NotificationService`).
-2. **Message Construction:** Your service builds an `EmailMessage` value object and hands it to the framework's `EmailService::send()` — the one place in the application that knows how to actually dispatch mail.
-3. **Environment Assembly:** `EmailService` processes the request using values compiled from your secure `app/.env` file during the initial bootstrap timeline.
-4. **Encapsulation & Dispatch:** The internal service encapsulates metadata securely into the immutable `EmailMessage` object, which is dispatched via SMTP.
-5. **Upstream Response:** An `EmailResult` envelope returns upstream—providing the invoking controller explicit confirmation of delivery success or a clean, diagnostic error string on failure.
-
-No magic background queues to stall out on shared hosting. Complete visibility, fast, and completely traceable.
+For emails of your own, such as an invoice, write a service of your own that hands its message to FrankPHP's `EmailService`. See [Sending your own kind of email](/architecture/dependency-injection#sending-your-own-kind-of-email).
 
 ---
 
-## Next Steps
+## Next
 
-Now that database records and external communication protocols are established, you're ready to tailor the application scaffolding to match your specific product goals:
-
-* **Understand code architecture** — Open up `MYAPP.md` and define your custom application tables, routes, and structural shifts.
-* **Add a custom model** — Learn how to inherit from `BaseModel` to securely read, write, and safely cast domain schemas.
+<CardGroup cols={2}>
+  <Card title="Accessing The Site" icon="right-to-bracket" href="/concepts/users/signup-flow">
+    <span className="frank-chip">Docs</span>
+    How signing in with an emailed code works, step by step.
+  </Card>
+  <Card title="Environment Configuration" icon="gear" href="/architecture/environment-configuration">
+    <span className="frank-chip">Docs</span>
+    Every setting in app/.env, including the mail keys.
+  </Card>
+</CardGroup>

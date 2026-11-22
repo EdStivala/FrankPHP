@@ -44,7 +44,7 @@ FrankPHP has one screen for signing in and signing up, at `/login`. There are no
 - **Rate limiting.** At most 5 codes can be requested per hour from one IP address.
 - **All or nothing.** The tenant and the user are created together. If anything fails, neither is created and the person sees *"Account creation failed. Please try again."*
 - **Site-owner alerts.** The address in `MAIL_SITE_ADMIN` gets an email when an address with no account asks for a code, and another when the account is created. See [Getting Email Up and Running](/getting-started/getting-email-up-and-running).
-- **First login recorded.** Signing in straight after sign-up counts as the person's first login, so they don't show as "never logged in" on the [Users dashboard](/concepts/users/users-dashboard).
+- **First login recorded.** Signing in straight after sign-up counts as the person's first login, so they don't show as "never logged in" on the [User Screen](/concepts/users/users-dashboard).
 - **Invited people skip all this.** Someone invited by email follows the link to a welcome screen, and their account is created when they select **Let me see**. No code is needed.
 </Tip>
 
@@ -57,7 +57,7 @@ FrankPHP has one screen for signing in and signing up, at `/login`. There are no
     <span className="frank-chip">Docs</span>
     How the new tenant is named, and what `owner` means.
   </Card>
-  <Card title="Customising Sign-up" icon="sliders" href="/cookbooks/customising-signup">
+  <Card title="Send New People Somewhere Else" icon="route" href="/cookbooks/send-new-people-elsewhere">
     <span className="frank-chip">Cookbook</span>
     Send new people somewhere other than a new tenant.
   </Card>

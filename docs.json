@@ -111,7 +111,8 @@
                     "expanded": false,
                     "pages": [
                       "upgrading/upgrading-to-2-1-0",
-                      "upgrading/upgrading-to-2-2-0"
+                      "upgrading/upgrading-to-2-2-0",
+                      "upgrading/upgrading-to-3-0-0"
                     ]
                   }
                 ]
@@ -130,7 +131,20 @@
             "group": "Reference",
             "pages": [
               "reference/index",
-              "reference/clock"
+              {
+                "group": "Clock",
+                "icon": "clock",
+                "root": "reference/clock",
+                "expanded": false,
+                "pages": [
+                  "reference/clock/methods",
+                  "reference/clock/storing-timestamps",
+                  "reference/clock/handling-input",
+                  "reference/clock/showing-dates",
+                  "reference/clock/filtering-by-date",
+                  "reference/clock/common-mistakes"
+                ]
+              }
             ]
           }
         ]
@@ -140,7 +154,7 @@
         "icon": "graduation-cap",
         "menu": [
           {
-            "item": "Learn",
+            "item": "Tutorials",
             "icon": "graduation-cap",
             "description": "Tutorials, from PHP and HTML basics to your first Frank app.",
             "pages": [
@@ -154,8 +168,15 @@
             "pages": [
               "cookbooks/build-your-first-page",
               "cookbooks/add-a-form",
-              "cookbooks/using-clock-in-your-apps",
-              "cookbooks/customising-signup"
+              {
+                "group": "Customising Sign-up",
+                "root": "cookbooks/customising-signup",
+                "expanded": false,
+                "pages": [
+                  "cookbooks/send-new-people-elsewhere",
+                  "cookbooks/restyle-sign-in-screens"
+                ]
+              }
             ]
           }
         ]
@@ -181,7 +202,7 @@
     },
     {
       "source": "/cookbook/using-clock-in-your-apps",
-      "destination": "/cookbooks/using-clock-in-your-apps"
+      "destination": "/reference/clock"
     },
     {
       "source": "/users/customising-signup",
@@ -214,6 +235,10 @@
     {
       "source": "/users/terms-acceptance",
       "destination": "/concepts/users/terms-acceptance"
+    },
+    {
+      "source": "/cookbooks/using-clock-in-your-apps",
+      "destination": "/reference/clock"
     }
   ]
 }

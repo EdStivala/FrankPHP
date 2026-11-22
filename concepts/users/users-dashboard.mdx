@@ -1,12 +1,12 @@
 ---
-title: "Roles and the Users Dashboard"
-description: "What the Users screen shows, which users each role can see on it, and what they can do from it."
+title: "Roles and the User Screen"
+description: "What the User Screen shows, which users each role can see on it, and what they can do from it."
 ---
 
-The **Users** screen, at `/tenant/{tenant_id}/users`, lists the people in your app and lets the right people invite and edit them.
+The **User Screen**, at `/tenant/{tenant_id}/users`, lists the people in your app and lets the right people invite and edit them.
 
 <Note>
-The Users screen belongs to **your app**, not the framework: it's in `app/`, so you can change who sees it and what it shows. This page describes the starter app's version.
+The User Screen belongs to **your app**, not the framework: it's in `app/`, so you can change who sees it and what it shows. This page describes the starter app's version.
 </Note>
 
 ---
@@ -28,7 +28,7 @@ The summary cards always count the same people as the list, plus you.
 
 ## What each role sees
 
-| Role | Sees the Users screen | Users listed |
+| Role | Sees the User Screen | Users listed |
 |---|:---:|---|
 | `platform` | Yes | **Every user in every tenant**, with an extra **Tenant** column. The subtitle reads "All tenants". |
 | `owner` | Yes | The users in their own tenant |
@@ -46,7 +46,7 @@ The summary cards always count the same people as the list, plus you.
 
 ## Where the links appear
 
-The starter app links to the Users screen from two places:
+The starter app links to the User Screen from two places:
 
 - the sidebar (**Users**)
 - the tenant menu in the top bar (**Manage Users**)
@@ -67,7 +67,7 @@ Nobody has the `platform` role to begin with, and no screen can give it. Set it 
 UPDATE users SET role = 'platform' WHERE email = 'you@yourdomain.com';
 ```
 
-The person keeps their own tenant and signs in to it as normal. The Users screen then shows every tenant.
+The person keeps their own tenant and signs in to it as normal. The User Screen then shows every tenant.
 
 <Warning>
 Give `platform` only to the people who run the site. Anyone with it can see the email, name, role and login activity of every user, and can sign in as any tenant's owner. See [Tenant Isolation and the Platform Role](/architecture/tenant-isolation).

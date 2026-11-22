@@ -23,3 +23,4 @@ If you see a blank page or a PHP error, the most common causes are:
 - Your database user doesn't have permission to create tables (needed for the automatic first-boot schema setup)
 - File permissions — your host may require folders to be `755` and files `644`
 - The web server can't create `app/private/sessions`, the folder FrankPHP keeps sign-in sessions in
+- A required setting in `app/.env` is missing or empty — FrankPHP stops with a message naming it. See [Environment Configuration](/architecture/environment-configuration#every-key)

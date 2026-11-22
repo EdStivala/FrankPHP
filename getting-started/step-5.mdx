@@ -39,5 +39,3 @@ So your full structure looks like this:
 <Warning>
 **Why this matters:** By pointing your domain to `app/public` only, your `.env` file and all framework/application source files stay outside the web root. That means your credentials cannot be requested directly in the browser. This is a simple, effective security layer and follows the same broad approach used by larger PHP frameworks.
 </Warning>
-
-Once the subdomain is configured, point `app.yoursite.com` to `/yourproject/app/public`.
